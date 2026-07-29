@@ -1,0 +1,67 @@
+{
+  "name": "صوت السودان الـ AI - Sudan AI Studio",
+  "short_name": "صوت السودان",
+  "description": "تطبيق صوت السودان الشامل للذكاء الاصطناعي - توليد الصوت الإعلاني السوداني الحماسي، توليد الصور الفنية، المحادثة الذكية، والمساعد المالي والأكاديمي.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "display_override": [
+    "standalone",
+    "window-controls-overlay",
+    "minimal-ui"
+  ],
+  "background_color": "#09090b",
+  "theme_color": "#10b981",
+  "orientation": "portrait-primary",
+  "lang": "ar",
+  "dir": "rtl",
+  "categories": [
+    "productivity",
+    "utilities",
+    "entertainment",
+    "education"
+  ],
+  "icons": [
+    {
+      "src": "/pwa-192x192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/pwa-512x512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/favicon.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "صوت إعلاني سوداني",
+      "short_name": "صوت إعلاني",
+      "description": "توليد نص وصوت إعلاني حماسي بلهجة سودانية",
+      "url": "/?view=voice",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "توليد صور بالذكاء الاصطناعي",
+      "short_name": "توليد صور",
+      "description": "رسم وتصميم صور وبنرات إعلانية فريدة",
+      "url": "/?view=image",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    },
+    {
+      "name": "محادثة صوت السودان",
+      "short_name": "المحادثة",
+      "description": "محادثة ذكية وسريعة مع Gemini 3.5 Pro",
+      "url": "/?view=chat",
+      "icons": [{ "src": "/pwa-192x192.png", "sizes": "192x192" }]
+    }
+  ]
+}
