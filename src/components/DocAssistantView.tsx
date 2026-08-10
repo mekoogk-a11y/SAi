@@ -180,3 +180,5 @@ export const DocAssistantView: React.FC<DocAssistantViewProps> = ({
     </div>
   );
 };
+
+export default DocAssistantView;

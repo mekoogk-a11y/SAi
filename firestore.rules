@@ -1,0 +1,60 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Global Default Deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Security Helpers
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // User Profile
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidId(userId);
+      allow delete: if isOwner(userId);
+
+      // User Chat Sessions
+      match /chats/{chatId} {
+        allow read, write: if isOwner(userId) && isValidId(chatId);
+      }
+
+      // User Voice Audio History
+      match /voice_history/{voiceId} {
+        allow read, write: if isOwner(userId) && isValidId(voiceId);
+      }
+
+      // User Generated Images
+      match /generated_images/{imageId} {
+        allow read, write: if isOwner(userId) && isValidId(imageId);
+      }
+    }
+
+    // App Feedback Collection
+    match /app_feedback/{feedbackId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isValidId(feedbackId) && incoming().userId == request.auth.uid;
+      allow update, delete: if isSignedIn() && existing().userId == request.auth.uid;
+    }
+  }
+}

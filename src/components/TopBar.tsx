@@ -11,7 +11,8 @@ import {
   X, 
   CheckCircle, 
   Sparkles,
-  Copy
+  Copy,
+  Menu
 } from 'lucide-react';
 
 interface TopBarProps {
@@ -30,6 +31,8 @@ interface TopBarProps {
   isPwaInstalled?: boolean;
   appLanguage?: 'ar' | 'en';
   setAppLanguage?: (lang: 'ar' | 'en') => void;
+  sidebarOpen?: boolean;
+  setSidebarOpen?: (open: boolean | ((prev: boolean) => boolean)) => void;
 }
 
 export const TopBar: React.FC<TopBarProps> = ({
@@ -47,7 +50,9 @@ export const TopBar: React.FC<TopBarProps> = ({
   handleInstallPwa,
   isPwaInstalled,
   appLanguage = 'ar',
-  setAppLanguage
+  setAppLanguage,
+  sidebarOpen,
+  setSidebarOpen
 }) => {
   const [showNotifMenu, setShowNotifMenu] = useState(false);
 
@@ -57,27 +62,46 @@ export const TopBar: React.FC<TopBarProps> = ({
     <header className="sticky top-0 z-30 bg-zinc-950/80 dark:bg-zinc-950/80 light-mode:bg-white/80 backdrop-blur-xl border-b border-zinc-800/80 light-mode:border-slate-200 px-4 py-3 transition-colors">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         
-        {/* Brand & Mobile View Switcher */}
+        {/* Brand & Menu Button */}
         <div className="flex items-center gap-3">
+          {setSidebarOpen && (
+            <button
+              onClick={() => setSidebarOpen(prev => !prev)}
+              className="p-2.5 bg-zinc-900 dark:bg-zinc-900 light-mode:bg-slate-100 hover:bg-zinc-800 border border-zinc-800 dark:border-zinc-800 light-mode:border-slate-300 text-zinc-200 light-mode:text-slate-800 rounded-xl transition-all flex items-center gap-1.5 shadow-md hover:border-emerald-500/40"
+              title="فتح / إغلاق القائمة"
+            >
+              <Menu className="w-5 h-5 text-emerald-400" />
+              <span className="text-xs font-black">القائمة</span>
+            </button>
+          )}
+
           <button 
             onClick={() => setActiveView('dashboard')}
-            className="flex items-center gap-2.5 text-right hover:opacity-90 transition-all group"
+            className="flex items-center gap-2 text-right hover:opacity-90 transition-all group"
           >
-            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 flex items-center justify-center text-zinc-950 font-black shadow-lg shadow-emerald-500/20 border border-emerald-300/40 group-hover:scale-105 transition-transform">
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-600 via-teal-500 to-emerald-400 flex items-center justify-center text-zinc-950 font-black shadow-lg shadow-emerald-500/20 border border-emerald-300/40 group-hover:scale-105 transition-transform shrink-0">
               <span className="text-lg">SAi</span>
             </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <span className="font-black text-sm md:text-base text-zinc-100 dark:text-zinc-100 light-mode:text-slate-900 tracking-tight">
-                  الذكاء الاصطناعي السوداني
-                </span>
-                <span className="text-[10px] bg-emerald-500/10 text-emerald-400 font-extrabold px-1.5 py-0.5 rounded border border-emerald-500/20">
-                  SAi 3.5
-                </span>
+            
+            {/* Sudan Map Frame Badge */}
+            <div className="flex items-center gap-2 bg-emerald-950/60 dark:bg-emerald-950/60 light-mode:bg-emerald-50 border border-emerald-500/40 px-3 py-1.5 rounded-2xl shadow-inner">
+              <svg viewBox="0 0 100 100" className="w-7 h-7 text-emerald-400 shrink-0" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="round">
+                <path d="M38 10 L58 10 L68 18 L64 28 L82 42 L78 58 L62 76 L52 82 L42 86 L32 76 L22 74 L12 62 L10 44 L20 32 L26 18 Z" />
+                <circle cx="50" cy="45" r="4" className="fill-emerald-400" />
+              </svg>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="font-black text-xs md:text-sm text-emerald-300 dark:text-emerald-300 light-mode:text-emerald-800 tracking-tight">
+                    الذكاء الاصطناعي السوداني
+                  </span>
+                  <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-extrabold px-1.5 py-0.2 rounded border border-emerald-500/30">
+                    🇸🇩 SAi
+                  </span>
+                </div>
+                <p className="text-[9px] text-zinc-400 dark:text-zinc-400 light-mode:text-slate-500 hidden sm:block">
+                  المنصة الذكية الشاملة
+                </p>
               </div>
-              <p className="text-[10px] text-zinc-400 dark:text-zinc-400 light-mode:text-slate-500 hidden sm:block">
-                منصة وطنية شاملة لخدمة العلم والتقنية 🇸🇩
-              </p>
             </div>
           </button>
         </div>
@@ -122,55 +146,15 @@ export const TopBar: React.FC<TopBarProps> = ({
             </button>
           )}
 
-          {/* Bank contribution badge */}
+          {/* Support SAi badge */}
           <button
-            onClick={() => {
-              navigator.clipboard.writeText("2813955");
-              showToast("تم نسخ رقم حساب بنك الخرطوم (2813955) للمساهمة!");
-            }}
+            onClick={() => setActiveView('dedication')}
             className="hidden lg:flex items-center gap-1.5 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl text-xs font-bold transition-all"
-            title="حساب بنك الخرطوم للمساهمة الوطنية"
+            title="دعم وتطوير منصة SAi"
           >
             <Heart className="w-3.5 h-3.5 text-emerald-400 fill-emerald-500/30" />
-            <span>بنكك: 2813955</span>
+            <span>دعم وتطوير SAi</span>
           </button>
-
-          {/* Font Size Adjuster */}
-          <div className="flex items-center bg-zinc-900 dark:bg-zinc-900 light-mode:bg-slate-100 border border-zinc-800 dark:border-zinc-800 light-mode:border-slate-300 rounded-xl p-0.5">
-            <button
-              onClick={() => setFontSizeScale('normal')}
-              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                fontSizeScale === 'normal' 
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-              title="خط عادي"
-            >
-              <Type className="w-3 h-3" />
-            </button>
-            <button
-              onClick={() => setFontSizeScale('large')}
-              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                fontSizeScale === 'large' 
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-              title="خط كبير مريح"
-            >
-              <Type className="w-3.5 h-3.5" />
-            </button>
-            <button
-              onClick={() => setFontSizeScale('xlarge')}
-              className={`px-2 py-1 rounded-lg text-[10px] font-bold transition-all ${
-                fontSizeScale === 'xlarge' 
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                  : 'text-zinc-400 hover:text-zinc-200'
-              }`}
-              title="خط عريض جداً"
-            >
-              <Type className="w-4 h-4" />
-            </button>
-          </div>
 
           {/* Language Switcher */}
           {setAppLanguage && (

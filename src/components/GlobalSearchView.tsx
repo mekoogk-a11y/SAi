@@ -78,3 +78,5 @@ export const GlobalSearchView: React.FC<GlobalSearchViewProps> = ({
     </div>
   );
 };
+
+export default GlobalSearchView;

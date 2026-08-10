@@ -568,3 +568,5 @@ export const ImageGenView: React.FC<ImageGenViewProps> = ({
     </div>
   );
 };
+
+export default ImageGenView;

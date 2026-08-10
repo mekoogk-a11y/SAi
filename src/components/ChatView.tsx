@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { 
   Send, 
+  ArrowLeft,
+  ArrowUp,
   Mic, 
   MicOff, 
   Paperclip, 
@@ -32,9 +34,13 @@ import {
   GraduationCap,
   Newspaper,
   ChevronDown,
-  Image as ImageIcon
+  Image as ImageIcon,
+  HelpCircle,
+  MessageSquare,
+  Lightbulb
 } from 'lucide-react';
 import Markdown from 'react-markdown';
+import { SudaneseLanguageEngine } from '../lib/sudaneseLanguageEngine';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -58,7 +64,7 @@ interface ChatViewProps {
   getReadingTextClass: () => string;
   aiPersona: string;
   setAiPersona: (persona: any) => void;
-  toggleSpeakText: (text: string) => void;
+  toggleSpeakText: (text: string, personaId?: string, langCode?: string) => void;
   currentlySpeakingText: string | null;
   currentUser: any;
 }
@@ -85,12 +91,24 @@ export const ChatView: React.FC<ChatViewProps> = ({
   const [selectedPromptCategory, setSelectedPromptCategory] = useState("students");
   const [chatAttachment, setChatAttachment] = useState<{ name: string; fileType: string; content: string } | null>(null);
   const [isRecordingMic, setIsRecordingMic] = useState(false);
+  const [selectedTextSnippet, setSelectedTextSnippet] = useState<string | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, isSendingChat]);
+
+  // Handle user mouse selection for "Ask Written Text" feature
+  const handleMouseUpSelection = () => {
+    const selection = window.getSelection();
+    if (selection) {
+      const text = selection.toString().trim();
+      if (text.length > 3) {
+        setSelectedTextSnippet(text);
+      }
+    }
+  };
 
   // Prompt Library Data Categories
   const promptCategories = [
@@ -459,7 +477,10 @@ export const ChatView: React.FC<ChatViewProps> = ({
       )}
 
       {/* Messages Stream Body */}
-      <div className="bg-zinc-950/90 border border-zinc-800/80 rounded-3xl p-4 md:p-6 min-h-[500px] max-h-[620px] overflow-y-auto space-y-6 shadow-inner backdrop-blur-xl">
+      <div 
+        onMouseUp={handleMouseUpSelection}
+        className="bg-zinc-950/90 border border-zinc-800/80 rounded-3xl p-4 md:p-6 min-h-[500px] max-h-[620px] overflow-y-auto space-y-6 shadow-inner backdrop-blur-xl"
+      >
         {filteredMessages.map((msg, idx) => (
           <div
             key={idx}
@@ -493,7 +514,18 @@ export const ChatView: React.FC<ChatViewProps> = ({
               </div>
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-800/50 text-[10px] text-zinc-500">
+              <div className="flex flex-wrap items-center justify-end gap-2 pt-2 border-t border-zinc-800/50 text-[10px] text-zinc-500">
+                <button
+                  onClick={() => {
+                    setSelectedTextSnippet(msg.text);
+                    showToast("تم تحديد النص المكتوب للتحليل والأسئلة!");
+                  }}
+                  className="hover:text-amber-300 text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-lg transition-colors flex items-center gap-1 font-bold"
+                  title="اسأل عن هذا النص المكتوب مباشرة"
+                >
+                  <HelpCircle className="w-3 h-3 text-amber-400" />
+                  <span>اسأل النص المكتوب</span>
+                </button>
                 <button
                   onClick={() => {
                     navigator.clipboard.writeText(msg.text);
@@ -557,12 +589,117 @@ export const ChatView: React.FC<ChatViewProps> = ({
         </div>
       )}
 
+      {/* SLE Realtime Live Analysis Badge */}
+      {chatInput.trim().length > 3 && (() => {
+        const sle = SudaneseLanguageEngine.process(chatInput);
+        return (
+          <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 bg-zinc-900/90 border border-emerald-500/30 rounded-2xl text-[11px] text-zinc-300 backdrop-blur-md animate-fade-in">
+            <div className="flex items-center gap-2">
+              <span className="font-bold text-emerald-400">🇸🇩 طبقة الفهم السوداني (SLE):</span>
+              <span className="bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-full font-bold">
+                {sle.intentLabelAr}
+              </span>
+              {sle.isSudaneseDialect && (
+                <span className="bg-amber-500/10 text-amber-400 border border-amber-500/20 px-2 py-0.5 rounded-full font-bold">
+                  عامية سودانية ({sle.dialectConfidence}%)
+                </span>
+              )}
+            </div>
+
+            {sle.correctionsMade.length > 0 && (
+              <span className="text-[10px] text-teal-400">
+                ✨ تم التصحيح التلقائي: "{sle.correctionsMade[0].original}" ➔ "{sle.correctionsMade[0].corrected}"
+              </span>
+            )}
+          </div>
+        );
+      })()}
+
+      {/* Selected Text Snippet Banner (اسأل النص المكتوب) */}
+      {selectedTextSnippet && (
+        <div className="p-3 bg-gradient-to-r from-zinc-950 via-zinc-900 to-amber-950/40 border border-amber-500/40 rounded-2xl text-xs space-y-2 shadow-xl animate-fade-in backdrop-blur-md">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-amber-400 font-black">
+              <Lightbulb className="w-4 h-4 animate-bounce" />
+              <span>زر "اسأل النص المكتوب" (Ask Written Text) - نص محدد للتحليل:</span>
+            </div>
+            <button 
+              onClick={() => setSelectedTextSnippet(null)} 
+              className="text-zinc-400 hover:text-white p-1 rounded-lg hover:bg-zinc-800"
+              title="إغلاق التحديد"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
+
+          <p className="text-zinc-300 font-mono text-[11px] bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-800/80 line-clamp-2 leading-relaxed">
+            "{selectedTextSnippet}"
+          </p>
+
+          <div className="flex flex-wrap items-center gap-1.5 pt-1">
+            <button
+              onClick={() => {
+                const prompt = `بناءً على النص المكتوب المحدد التالي:\n"""\n${selectedTextSnippet}\n"""\n\nيرجى الإجابة وتوضيح التفاصيل والأدلة العلمية المتعلقة بهذا النص بالتفصيل:`;
+                handleSendChat(prompt);
+                setSelectedTextSnippet(null);
+              }}
+              className="px-2.5 py-1 bg-amber-500/20 hover:bg-amber-500/30 border border-amber-500/40 text-amber-300 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+            >
+              <HelpCircle className="w-3 h-3" />
+              <span>اسأل عن هذا النص</span>
+            </button>
+
+            <button
+              onClick={() => {
+                const prompt = `يرجى شرح وتوضيح المفاهيم الواردة في النص التالي بأسلوب مبسط وعميق:\n"""\n${selectedTextSnippet}\n"""`;
+                handleSendChat(prompt);
+                setSelectedTextSnippet(null);
+              }}
+              className="px-2.5 py-1 bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/40 text-emerald-300 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+            >
+              <BookOpen className="w-3 h-3" />
+              <span>شرح وتوضيح</span>
+            </button>
+
+            <button
+              onClick={() => {
+                const prompt = `لخص النقاط الأساسية والمحورية من النص المكتوب التالي في نقاط موجهة:\n"""\n${selectedTextSnippet}\n"""`;
+                handleSendChat(prompt);
+                setSelectedTextSnippet(null);
+              }}
+              className="px-2.5 py-1 bg-blue-500/20 hover:bg-blue-500/30 border border-blue-500/40 text-blue-300 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+            >
+              <FileText className="w-3 h-3" />
+              <span>تلخيص مركز</span>
+            </button>
+
+            <button
+              onClick={() => {
+                const prompt = `ترجم النص المكتوب التالي ترجمة أكاديمية احترافية دقيقة مع تحسين التعبير:\n"""\n${selectedTextSnippet}\n"""`;
+                handleSendChat(prompt);
+                setSelectedTextSnippet(null);
+              }}
+              className="px-2.5 py-1 bg-purple-500/20 hover:bg-purple-500/30 border border-purple-500/40 text-purple-300 rounded-lg text-[10px] font-bold transition-all flex items-center gap-1"
+            >
+              <Sparkles className="w-3 h-3" />
+              <span>ترجمة محكمة</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Main Input Box Area */}
       <div className="relative bg-zinc-900/90 border border-zinc-800 rounded-3xl p-3 shadow-2xl backdrop-blur-xl">
         <form
           onSubmit={(e) => {
             e.preventDefault();
-            handleSendChat();
+            if (selectedTextSnippet && chatInput.trim()) {
+              const fullPrompt = `بناءً على النص المكتوب التالي:\n"""\n${selectedTextSnippet}\n"""\n\nالسؤال/الطلب الخاص بهذا النص:\n${chatInput}`;
+              handleSendChat(fullPrompt);
+              setSelectedTextSnippet(null);
+            } else {
+              handleSendChat();
+            }
           }}
           className="flex items-center gap-2"
         >
@@ -596,14 +733,15 @@ export const ChatView: React.FC<ChatViewProps> = ({
             disabled={isSendingChat}
           />
 
-          {/* Large Send Button */}
+          {/* Send Arrow Button */}
           <button
             type="submit"
             disabled={isSendingChat || (!chatInput.trim() && !chatAttachment)}
-            className="px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-40 text-zinc-950 font-black rounded-2xl shadow-lg transition-all shrink-0 flex items-center gap-2"
+            className="px-5 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-40 text-zinc-950 font-black rounded-2xl shadow-lg hover:shadow-emerald-500/25 transition-all shrink-0 flex items-center justify-center gap-2 cursor-pointer"
+            title="إرسال الرسالة"
           >
             <span>إرسال</span>
-            <Send className="w-4 h-4 rotate-180" />
+            <ArrowLeft className="w-4 h-4 text-zinc-950 stroke-[3]" />
           </button>
         </form>
       </div>
@@ -611,3 +749,5 @@ export const ChatView: React.FC<ChatViewProps> = ({
     </div>
   );
 };
+
+export default ChatView;

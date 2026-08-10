@@ -712,3 +712,5 @@ export const GmailManager: React.FC<GmailManagerProps> = ({ showToast }) => {
     </div>
   );
 };
+
+export default GmailManager;

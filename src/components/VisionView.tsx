@@ -229,3 +229,5 @@ export const VisionView: React.FC<VisionViewProps> = ({
     </div>
   );
 };
+
+export default VisionView;

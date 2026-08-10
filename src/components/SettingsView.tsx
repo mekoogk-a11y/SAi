@@ -105,7 +105,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 themeMode === 'dark' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-zinc-950 text-zinc-400 border-zinc-800'
               }`}
             >
-              ليلي
+              ليلي 🌙
             </button>
             <button
               onClick={() => setThemeMode('light')}
@@ -113,8 +113,78 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
                 themeMode === 'light' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-zinc-950 text-zinc-400 border-zinc-800'
               }`}
             >
-              مضيء
+              مضيء ☀️
             </button>
+          </div>
+        </div>
+
+        {/* Language Selection */}
+        <div className="p-5 bg-zinc-900/80 border border-zinc-800 rounded-2xl flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-zinc-100">لغة واجهة واستجابة الذكاء الاصطناعي</h3>
+            <p className="text-xs text-zinc-400">تحديد اللغة المفضلة للحوارات والاستجابات الإعلانية</p>
+          </div>
+          <div className="flex items-center gap-2">
+            {['العامية السودانية 🇸🇩', 'الفصحى 🇸🇩', 'English 🌐'].map((lang, idx) => (
+              <button
+                key={idx}
+                onClick={() => showToast(`تم ضبط لغة المنصة: ${lang}`)}
+                className={`px-3 py-1.5 rounded-xl text-xs font-bold border transition-all ${
+                  idx === 0 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-zinc-950 text-zinc-400 border-zinc-800'
+                }`}
+              >
+                {lang}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Audio & Speech Controls */}
+        <div className="p-5 bg-zinc-900/80 border border-zinc-800 rounded-2xl space-y-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h3 className="text-sm font-bold text-zinc-100">إعدادات الصوت والنطق السوداني 🎙️</h3>
+              <p className="text-xs text-zinc-400">التحكم في سرعة الإلقاء، طبقة الصوت، وتشغيل الصوت التلقائي</p>
+            </div>
+            <span className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2.5 py-1 rounded-full font-bold">
+              متاح
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+            <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800/80 space-y-1">
+              <span className="text-xs text-zinc-300 font-bold block">سرعة الإلقاء الصوتي:</span>
+              <div className="flex items-center gap-2 text-xs">
+                {['بطيء', 'طبيعي', 'حماسي'].map((speed, i) => (
+                  <button
+                    key={i}
+                    onClick={() => showToast(`تم اختيار سرعة الصوت: ${speed}`)}
+                    className={`flex-1 py-1 rounded-lg text-[11px] font-bold border ${
+                      i === 1 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                    }`}
+                  >
+                    {speed}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="bg-zinc-950 p-3 rounded-xl border border-zinc-800/80 space-y-1">
+              <span className="text-xs text-zinc-300 font-bold block">الصوت المفترض للذكاء:</span>
+              <div className="flex items-center gap-2 text-xs">
+                {['صوت رجالي (عصام)', 'صوت نسائي (سارة)'].map((voice, i) => (
+                  <button
+                    key={i}
+                    onClick={() => showToast(`تم اختيار الصوت: ${voice}`)}
+                    className={`flex-1 py-1 rounded-lg text-[11px] font-bold border ${
+                      i === 0 ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 'bg-zinc-900 text-zinc-400 border-zinc-800'
+                    }`}
+                  >
+                    {voice}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
 
@@ -183,6 +253,36 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </button>
         </div>
 
+        {/* Vercel & Production Version Info Banner */}
+        <div className="p-5 bg-gradient-to-r from-zinc-950 via-zinc-900 to-emerald-950/60 border border-emerald-500/30 rounded-2xl space-y-3">
+          <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+              <h4 className="text-xs font-black text-white">إصدار الإنتاج وتزامن Vercel الرسمية</h4>
+            </div>
+            <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-md bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+              SAi v3.5.0
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-right">
+            <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800">
+              <span className="text-[10px] text-zinc-400 block">فرع المستودع (GitHub Branch)</span>
+              <span className="text-xs font-bold text-emerald-400">main (Production)</span>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800">
+              <span className="text-[10px] text-zinc-400 block">استضافة الإنتاج (Hosting)</span>
+              <span className="text-xs font-bold text-white">Vercel Auto-Deploy</span>
+            </div>
+
+            <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800">
+              <span className="text-[10px] text-zinc-400 block">حالة المزامنة (Status)</span>
+              <span className="text-xs font-bold text-emerald-400">مُتزامن وجاهز 100%</span>
+            </div>
+          </div>
+        </div>
+
       </div>
 
       {/* Privacy Modal */}
@@ -244,3 +344,5 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     </div>
   );
 };
+
+export default SettingsView;

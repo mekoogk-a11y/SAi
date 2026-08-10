@@ -15,7 +15,7 @@ import {
 interface TranslatorViewProps {
   showToast: (msg: string, type?: 'success' | 'error') => void;
   getReadingTextClass: () => string;
-  toggleSpeakText: (text: string) => void;
+  toggleSpeakText: (text: string, personaId?: string, langCode?: string) => void;
   currentlySpeakingText: string | null;
 }
 
@@ -162,12 +162,16 @@ export const TranslatorView: React.FC<TranslatorViewProps> = ({
 
           <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
             <button
-              onClick={() => toggleSpeakText(inputText)}
+              onClick={() => toggleSpeakText(inputText, undefined, sourceLang)}
               disabled={!inputText}
-              className="text-xs text-zinc-400 hover:text-blue-400 flex items-center gap-1"
+              className={`text-xs flex items-center gap-1.5 transition-colors px-2.5 py-1 rounded-lg border ${
+                currentlySpeakingText === inputText 
+                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 font-bold animate-pulse' 
+                  : 'text-zinc-400 hover:text-blue-400 border-transparent'
+              }`}
             >
               <Volume2 className="w-3.5 h-3.5" />
-              <span>استماع</span>
+              <span>{currentlySpeakingText === inputText ? 'إيقاف النطق' : 'استماع للنص'}</span>
             </button>
 
             <button
@@ -211,12 +215,16 @@ export const TranslatorView: React.FC<TranslatorViewProps> = ({
 
           <div className="flex items-center justify-between pt-2 border-t border-zinc-800">
             <button
-              onClick={() => toggleSpeakText(translatedText)}
+              onClick={() => toggleSpeakText(translatedText, undefined, targetLang)}
               disabled={!translatedText}
-              className="text-xs text-zinc-400 hover:text-blue-400 flex items-center gap-1"
+              className={`text-xs flex items-center gap-1.5 transition-colors px-2.5 py-1 rounded-lg border ${
+                currentlySpeakingText === translatedText 
+                  ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30 font-bold animate-pulse' 
+                  : 'text-zinc-400 hover:text-blue-400 border-transparent'
+              }`}
             >
               <Volume2 className="w-3.5 h-3.5" />
-              <span>نطق الترجمة</span>
+              <span>{currentlySpeakingText === translatedText ? 'إيقاف النطق' : 'نطق الترجمة'}</span>
             </button>
 
             <span className="text-[10px] text-zinc-500">ترجمة معززة بتقنيات Gemini 3.5</span>
@@ -228,3 +236,5 @@ export const TranslatorView: React.FC<TranslatorViewProps> = ({
     </div>
   );
 };
+
+export default TranslatorView;

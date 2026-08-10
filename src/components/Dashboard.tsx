@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { 
   MessageSquare, 
   Eye, 
@@ -20,7 +20,12 @@ import {
   Bot, 
   HelpCircle,
   Copy,
-  ChevronLeft
+  ChevronLeft,
+  Paperclip,
+  Mic,
+  Send,
+  ArrowLeft,
+  Type
 } from 'lucide-react';
 
 interface DashboardProps {
@@ -29,6 +34,7 @@ interface DashboardProps {
   showToast: (msg: string, type?: 'success' | 'error') => void;
   savedChats: any[];
   favorites: any[];
+  onStartChatWithPrompt?: (prompt: string) => void;
 }
 
 export const Dashboard: React.FC<DashboardProps> = ({
@@ -36,8 +42,29 @@ export const Dashboard: React.FC<DashboardProps> = ({
   currentUser,
   showToast,
   savedChats,
-  favorites
+  favorites,
+  onStartChatWithPrompt
 }) => {
+  const [mainPrompt, setMainPrompt] = useState('');
+  const [isRecording, setIsRecording] = useState(false);
+
+  const handleSendMainPrompt = () => {
+    if (!mainPrompt.trim()) return;
+    if (onStartChatWithPrompt) {
+      onStartChatWithPrompt(mainPrompt);
+    } else {
+      setActiveView('chat');
+    }
+  };
+
+  const quickShortcuts = [
+    { id: 'writer', title: '✨ كتابة', icon: Sparkles },
+    { id: 'search', title: '🔎 بحث ذكي', icon: Search },
+    { id: 'documents', title: '📄 تحليل ملف', icon: FileText },
+    { id: 'translator', title: '🌐 ترجمة', icon: Globe },
+    { id: 'transform', title: '✍️ تحويل النص', icon: Type },
+    { id: 'studio', title: '🎙️ صوت إعلاني', icon: Mic2 }
+  ];
 
   const quickAccessCards = [
     {
@@ -47,6 +74,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
       icon: MessageSquare,
       color: 'from-emerald-500/20 to-teal-500/10 text-emerald-400 border-emerald-500/30',
       badge: 'الرئيسية'
+    },
+    {
+      id: 'transform',
+      title: 'تحويل النص والصياغة ✍️',
+      desc: 'تحويل أي نص إلى العامية السودانية، العربية الفصحى، أو الإنجليزية بأساليب متعددة.',
+      icon: Type,
+      color: 'from-teal-500/20 to-emerald-500/10 text-teal-400 border-teal-500/30',
+      badge: 'جديد'
     },
     {
       id: 'vision',
@@ -73,12 +108,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
       badge: 'إبداعي'
     },
     {
-      id: 'video',
-      title: 'صانع سيناريو الفيديو 🎬',
-      desc: 'تخطيط وتوليد مشهد بـ مشهد وزوايا الكاميرا والمؤثرات الصوتية للفيديوهات الحماسية.',
-      icon: PlayCircle,
-      color: 'from-rose-500/20 to-red-500/10 text-rose-400 border-rose-500/30',
-      badge: 'جديد'
+      id: 'tutor',
+      title: 'SAi Tutor — المدرّس الذكي 🎓',
+      desc: 'مدرّسك الذكي الذي يشرح لك بالطريقة واللغة التي تناسبك (العربية الفصحى، العامية السودانية، English) مع صوت واختبارات.',
+      icon: GraduationCap,
+      color: 'from-amber-500/20 to-emerald-500/10 text-emerald-400 border-emerald-500/30',
+      badge: 'مدرّس ذكي'
     },
     {
       id: 'translator',
@@ -130,15 +165,16 @@ export const Dashboard: React.FC<DashboardProps> = ({
     },
     {
       id: 'dedication',
-      title: 'إهداء ودعم المنصة 🇸🇩',
-      desc: 'تطبيق مجاني 100% لخدمة طلاب وباحثي السودان. حساب بنك الخرطوم للمساهمة: 2813955.',
+      title: 'دعم وتطوير SAi 🇸🇩',
+      desc: 'مركز دعم وتطوير المنصة والتواصل المباشر مع المهندس المطور كمال جعفر لتسريع تحديث النماذج.',
       icon: Heart,
       color: 'from-emerald-500/20 to-teal-500/10 text-emerald-300 border-emerald-500/30',
-      badge: '2813955'
+      badge: 'دعم التطوير'
     }
   ];
 
   const quickPromptIdeas = [
+    { title: "حُول هذا النص إلى العامية السودانية الطبيعية", view: "transform" },
     { title: "اكتب نص إعلان حماسي لعطر سوداني فاخر", view: "studio" },
     { title: "اشرح لي خوارزميات المكدس والمصفوفات بلغة Python", view: "code" },
     { title: "لخص هذا البحث الأكاديمي واستخرج النقاط المحورية", view: "documents" },
@@ -149,41 +185,104 @@ export const Dashboard: React.FC<DashboardProps> = ({
   return (
     <div className="space-y-8 animate-fade-in pb-12">
       
-      {/* Hero Header Banner */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-emerald-950/80 border border-emerald-500/30 p-6 md:p-8 shadow-2xl backdrop-blur-xl">
+      {/* Central Welcome Header & AI Input Box */}
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-emerald-950/80 border border-emerald-500/30 p-6 md:p-10 shadow-2xl backdrop-blur-xl text-center space-y-6">
         <div className="absolute -left-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute right-0 top-0 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-        <div className="relative z-10 max-w-3xl space-y-4">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold">
-            <Zap className="w-3.5 h-3.5 text-amber-400 animate-pulse" />
-            منصة الذكاء الاصطناعي العالمية السودانية الشاملة (SAi 3.5)
+        <div className="relative z-10 max-w-2xl mx-auto space-y-3">
+          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-emerald-900/60 to-zinc-950 border border-emerald-500/40 text-emerald-300 text-xs font-black shadow-lg">
+            <svg viewBox="0 0 100 100" className="w-6 h-6 text-emerald-400 shrink-0" fill="currentColor" fillOpacity="0.25" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="round">
+              <path d="M38 10 L58 10 L68 18 L64 28 L82 42 L78 58 L62 76 L52 82 L42 86 L32 76 L22 74 L12 62 L10 44 L20 32 L26 18 Z" />
+              <circle cx="50" cy="45" r="4" className="fill-emerald-400 animate-ping" />
+              <circle cx="50" cy="45" r="4" className="fill-emerald-400" />
+            </svg>
+            <span>منصة الذكاء الاصطناعي السوداني العالمية 🇸🇩</span>
           </div>
           
-          <h1 className="text-2xl md:text-4xl font-black text-white leading-tight tracking-tight">
-            مرحباً بك يا زول! كيف يمكنني مساعدتك اليوم؟ 🇸🇩✨
+          <h1 className="text-3xl md:text-5xl font-black text-white leading-tight tracking-tight">
+            مرحباً بك في SAi
           </h1>
 
-          <p className="text-xs md:text-sm text-zinc-300 leading-relaxed">
-            استمتع بأقوى أدوات المحادثة، قراءة الصور، توليد الأصوات الإعلانية السودانية الحماسية، كتابة وتجربة الكود، والمستندات الأكاديمية بكل سهولة وبدون رسوم.
+          <p className="text-sm md:text-base text-emerald-400 font-extrabold">
+            ماذا تريد أن تنجز اليوم؟
           </p>
+        </div>
 
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <button
-              onClick={() => setActiveView('chat')}
-              className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-zinc-950 font-black rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2"
-            >
-              <MessageSquare className="w-4 h-4" />
-              <span>بدء دردشة جديدة</span>
-            </button>
+        {/* Central Input Box */}
+        <div className="relative z-10 max-w-2xl mx-auto">
+          <div className="relative bg-zinc-900/90 border border-emerald-500/40 rounded-2xl p-2 md:p-3 shadow-2xl focus-within:border-emerald-400 transition-all">
+            <textarea
+              rows={3}
+              value={mainPrompt}
+              onChange={(e) => setMainPrompt(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMainPrompt();
+                }
+              }}
+              placeholder="اكتب سؤالك، فكرتك، أو النص الذي تريد صياغته هنا..."
+              className="w-full bg-transparent text-white placeholder-zinc-500 text-xs md:text-sm p-2 focus:outline-none resize-none leading-relaxed"
+            />
 
-            <button
-              onClick={() => setActiveView('studio')}
-              className="px-5 py-2.5 bg-zinc-900/90 hover:bg-zinc-800 text-emerald-400 border border-emerald-500/30 font-extrabold rounded-xl text-xs transition-all flex items-center gap-2"
-            >
-              <Mic2 className="w-4 h-4 text-cyan-400" />
-              <span>توليد صوت إعلاني حماسي</span>
-            </button>
+            <div className="flex items-center justify-between border-t border-zinc-800/80 pt-2 px-1">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setActiveView('documents')}
+                  className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                  title="إرفاق ملف أو مستند"
+                >
+                  <Paperclip className="w-4 h-4" />
+                  <span className="hidden sm:inline">إرفاق ملف</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setIsRecording(!isRecording);
+                    if (!isRecording) {
+                      showToast("جاري تفعيل الإدخال الصوتي...");
+                    }
+                  }}
+                  className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
+                    isRecording 
+                      ? 'bg-red-500/20 border-red-500 text-red-400 animate-pulse' 
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-cyan-400'
+                  }`}
+                  title="إدخال صوتي"
+                >
+                  <Mic className="w-4 h-4" />
+                  <span className="hidden sm:inline">{isRecording ? 'جاري الاستماع...' : 'صوتي'}</span>
+                </button>
+              </div>
+
+              <button
+                onClick={handleSendMainPrompt}
+                disabled={!mainPrompt.trim()}
+                className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 disabled:opacity-40 text-zinc-950 font-black rounded-xl text-xs shadow-lg shadow-emerald-500/20 transition-all flex items-center gap-2 cursor-pointer"
+                title="إرسال الفكرة أو السؤال"
+              >
+                <span>إرسال</span>
+                <ArrowLeft className="w-4 h-4 text-zinc-950 stroke-[3]" />
+              </button>
+            </div>
+          </div>
+
+          {/* Quick Actions Shortcuts below Central Box */}
+          <div className="flex flex-wrap items-center justify-center gap-2 pt-4">
+            {quickShortcuts.map((sc) => {
+              const Icon = sc.icon;
+              return (
+                <button
+                  key={sc.id}
+                  onClick={() => setActiveView(sc.id)}
+                  className="px-3.5 py-2 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 hover:border-emerald-500/40 text-zinc-300 hover:text-emerald-300 text-xs font-extrabold transition-all flex items-center gap-1.5"
+                >
+                  <Icon className="w-3.5 h-3.5 text-emerald-400" />
+                  <span>{sc.title}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -194,7 +293,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
           <div>
             <h2 className="text-lg font-black text-zinc-100 dark:text-zinc-100 light-mode:text-slate-900 flex items-center gap-2">
               <Bot className="w-5 h-5 text-emerald-400" />
-              أدوات المنصة والخدمات الذكية
+              أدوات SAi والخدمات الذكية
             </h2>
             <p className="text-xs text-zinc-400 dark:text-zinc-400 light-mode:text-slate-500">اختر أياً من الأدوات المتاحة للبدء فوراً</p>
           </div>
@@ -264,22 +363,21 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <span>مشروع وطني سوداني غير ربحي 🇸🇩</span>
           </div>
           <p className="text-xs text-zinc-300 max-w-xl leading-relaxed">
-            التطبيق متاح مجاناً 100% لدعم الطلاب والباحثين والمطورين في السودان. للمساهمة في استدامة الخوادم عبر بنك الخرطوم:
+            التطبيق متاح مجاناً 100% لدعم الطلاب والباحثين والمطورين في السودان. يمكنك المساهمة في دعم وتطوير المنصة وسيرفرات الذكاء الاصطناعي عبر التواصل المباشر مع المطور.
           </p>
         </div>
 
         <button
-          onClick={() => {
-            navigator.clipboard.writeText("2813955");
-            showToast("تم نسخ رقم حساب بنك الخرطوم (2813955) بنجاح!");
-          }}
+          onClick={() => setActiveView('dedication')}
           className="px-4 py-2.5 bg-emerald-500/20 hover:bg-emerald-500/30 text-emerald-300 border border-emerald-500/40 font-black rounded-xl text-xs transition-all flex items-center gap-2 shrink-0"
         >
-          <Copy className="w-4 h-4" />
-          <span>بنكك: 2813955</span>
+          <Heart className="w-4 h-4 fill-emerald-500/40" />
+          <span>مركز دعم SAi</span>
         </button>
       </div>
 
     </div>
   );
 };
+
+export default Dashboard;

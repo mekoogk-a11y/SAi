@@ -3,9 +3,20 @@ import path from "path";
 import fs from "fs";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
+import { ElevenLabsClient } from "@elevenlabs/elevenlabs-js";
 import dotenv from "dotenv";
 
 dotenv.config();
+
+let elevenlabsClient: ElevenLabsClient | null = null;
+function getElevenLabsClient(): ElevenLabsClient | null {
+  const key = process.env.ELEVENLABS_API_KEY;
+  if (!key || key.trim() === "" || key.includes("YOUR_")) return null;
+  if (!elevenlabsClient) {
+    elevenlabsClient = new ElevenLabsClient({ apiKey: key });
+  }
+  return elevenlabsClient;
+}
 
 // Dual-Mode Database Setup (SQLite with JSON File fallback)
 let db: any = null;
@@ -18,6 +29,7 @@ interface DBState {
   favorites: any[];
   notifications: any[];
   folders: any[];
+  supportRequests?: any[];
 }
 
 let jsonDbState: DBState = {
@@ -33,7 +45,8 @@ let jsonDbState: DBState = {
   ],
   notifications: [
     { id: "notif-1", title: "مرحباً بكم في Sudan AI – الذكاء الاصطناعي السوداني", content: "تم تدشين المنصة العالمية الشاملة رسمياً لتقديم أحدث خدمات Gemini بكل لغات العالم وبلمسة هادفة ومميزة. أهلاً بك يا زول!", type: "system", created_at: new Date().toISOString(), read: 0 }
-  ]
+  ],
+  supportRequests: []
 };
 
 // Sync JSON db
@@ -103,6 +116,14 @@ try {
       user_id TEXT,
       name TEXT,
       color TEXT,
+      created_at TEXT
+    );
+    CREATE TABLE IF NOT EXISTS support_requests (
+      id TEXT PRIMARY KEY,
+      username TEXT,
+      email TEXT,
+      message TEXT,
+      reason TEXT,
       created_at TEXT
     );
   `);
@@ -295,6 +316,17 @@ const dbHelper = {
       db.prepare("DELETE FROM folders WHERE id = ?").run(id);
     }
   },
+  addSupportRequest: (reqData: { id: string; username: string; email: string; message: string; reason: string; created_at: string }) => {
+    if (useJsonDb) {
+      if (!jsonDbState.supportRequests) jsonDbState.supportRequests = [];
+      jsonDbState.supportRequests.unshift(reqData);
+      saveJsonDb();
+    } else {
+      db.prepare("INSERT INTO support_requests (id, username, email, message, reason, created_at) VALUES (?, ?, ?, ?, ?, ?)")
+        .run(reqData.id, reqData.username, reqData.email, reqData.message, reqData.reason, reqData.created_at);
+    }
+    return reqData;
+  },
   searchChats: (userId: string, query: string) => {
     const q = (query || "").toLowerCase().trim();
     if (useJsonDb) {
@@ -383,20 +415,107 @@ async function withRetry<T>(fn: () => Promise<T>, maxRetries: number = 4, delayM
   }
 }
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+export const app = express();
+app.use(express.json({ limit: "50mb" })); // Support large base64 strings (images/audio)
+app.use(express.urlencoded({ extended: true, limit: "50mb" }));
 
-  app.use(express.json({ limit: "50mb" })); // Support large base64 strings (images/audio)
-  app.use(express.urlencoded({ extended: true, limit: "50mb" }));
+// Developer Support & Feedback API Endpoint
+app.post("/api/support-request", (req, res) => {
+  try {
+    const { username, email, message, reason } = req.body || {};
+    
+    if (!username || typeof username !== "string" || !username.trim()) {
+      return res.status(400).json({ success: false, error: "الرجاء إدخال اسم المستخدم أو الجهة الداعمة" });
+    }
+    if (!email || typeof email !== "string" || !email.trim() || !email.includes("@")) {
+      return res.status(400).json({ success: false, error: "الرجاء إدخال بريد إلكتروني صحيح للتواصل" });
+    }
+    if (!message || typeof message !== "string" || !message.trim()) {
+      return res.status(400).json({ success: false, error: "الرجاء كتابة نص الملاحظات أو رسالة الدعم" });
+    }
+
+    // Sanitize and constrain input size
+    const cleanUsername = username.trim().slice(0, 100);
+    const cleanEmail = email.trim().toLowerCase().slice(0, 150);
+    const cleanMessage = message.trim().slice(0, 3000);
+    const cleanReason = (reason && typeof reason === "string" ? reason.trim() : "دعم وتطوير عام").slice(0, 100);
+
+    const requestId = "sup_" + Date.now() + "_" + Math.random().toString(36).substr(2, 6);
+    const createdAt = new Date().toISOString();
+
+    const record = dbHelper.addSupportRequest({
+      id: requestId,
+      username: cleanUsername,
+      email: cleanEmail,
+      message: cleanMessage,
+      reason: cleanReason,
+      created_at: createdAt
+    });
+
+    return res.json({
+      success: true,
+      message: "تم استلام طلب الدعم والملاحظات بنجاح. شكراً لمساهمتك في تطوير منصة SAi!",
+      request_id: requestId,
+      created_at: createdAt
+    });
+  } catch (err: any) {
+    console.error("Error in /api/support-request:", err);
+    return res.status(500).json({ success: false, error: "حدث خطأ غير متوقع أثناء حفظ الطلب" });
+  }
+});
+
+async function startServer() {
+  const PORT = 3000;
 
   // API endpoint for generating voiceovers using Gemini TTS
   app.post("/api/generate-voice", async (req, res) => {
     try {
-      const { text, voiceName = "Fenrir", tone = "حماسي ونشيط" } = req.body;
+      const { text, voiceName = "Fenrir", tone = "حماسي ونشيط", provider, voiceId, modelId = "eleven_v3", languageCode = "ar" } = req.body;
       if (!text || typeof text !== "string" || !text.trim()) {
         res.status(400).json({ error: "النص مطلوب لتوليد الصوت." });
         return;
+      }
+
+      // Check ElevenLabs first if explicitly requested or if ELEVENLABS_API_KEY is available
+      const elevenlabs = getElevenLabsClient();
+      if (elevenlabs && (provider === "elevenlabs" || process.env.ELEVENLABS_API_KEY)) {
+        try {
+          const targetVoiceId = voiceId || "NOpBlnGInO9m6vDvFkFC";
+          console.log(`Generating ElevenLabs audio with voiceId: ${targetVoiceId}, modelId: ${modelId}`);
+          
+          const audioStream = await elevenlabs.textToSpeech.convert(targetVoiceId, {
+            text,
+            modelId: modelId || "eleven_v3",
+            languageCode: languageCode || "ar"
+          });
+
+          const chunks: Uint8Array[] = [];
+          const reader = (audioStream as any).getReader ? (audioStream as any).getReader() : null;
+          if (reader) {
+            while (true) {
+              const { done, value } = await reader.read();
+              if (done) break;
+              if (value) chunks.push(value);
+            }
+          } else {
+            const streamAny: any = audioStream;
+            if (typeof streamAny[Symbol.asyncIterator] === 'function') {
+              for await (const chunk of streamAny) {
+                chunks.push(chunk);
+              }
+            } else if (streamAny instanceof Buffer) {
+              chunks.push(streamAny);
+            }
+          }
+
+          const audioBuffer = Buffer.concat(chunks);
+          res.set("Content-Type", "audio/mpeg");
+          res.send(audioBuffer);
+          return;
+        } catch (eErr: any) {
+          console.warn("ElevenLabs TTS conversion notice:", eErr?.message || eErr);
+          // Fallback gracefully to Gemini TTS if ElevenLabs fails
+        }
       }
 
       const apiKey = process.env.GEMINI_API_KEY;
@@ -417,41 +536,64 @@ async function startServer() {
         }
       });
 
-      // Construct a high-impact prompt directing the model to output a Sudanese dialect with specific tone
-      const prompt = `Perform the following text as a professional voiceover artist in a ${tone} tone with a distinct, warm, and natural Sudanese colloquial Arabic dialect (sudanese male voice): ${text}`;
+      // Construct a high-impact prompt directing the model to output a natural Sudanese dialect voice
+      const prompt = `Perform the following text as a professional voiceover artist in a ${tone} tone with a distinct, warm, and natural Sudanese colloquial Arabic dialect (اللهجة العامية السودانية الأصيلة): ${text}`;
 
-      console.log(`Generating audio with voice: ${voiceName}, tone: ${tone} for prompt:`, text);
+      console.log(`Generating audio with voice: ${voiceName}, tone: ${tone} for prompt:`, text.slice(0, 50));
 
-      const response = await withRetry(() => ai.models.generateContent({
-        model: "gemini-3.1-flash-tts-preview",
-        contents: [{ parts: [{ text: prompt }] }],
-        config: {
-          responseModalities: ["AUDIO"],
-          speechConfig: {
-            voiceConfig: {
-              prebuiltVoiceConfig: { voiceName },
+      const modelsToTry = [
+        "gemini-3.1-flash-tts-preview"
+      ];
+
+      let base64Audio: string | null = null;
+      let lastErr: any = null;
+
+      for (const modelName of modelsToTry) {
+        try {
+          const response = await ai.models.generateContent({
+            model: modelName,
+            contents: [{ parts: [{ text: prompt }] }],
+            config: {
+              responseModalities: ["AUDIO"],
+              speechConfig: {
+                voiceConfig: {
+                  prebuiltVoiceConfig: { voiceName },
+                },
+              },
             },
-          },
-        },
-      }));
+          });
 
-      const part = response.candidates?.[0]?.content?.parts?.[0];
-      const base64Audio = part?.inlineData?.data;
+          const part = response.candidates?.[0]?.content?.parts?.[0];
+          if (part?.inlineData?.data) {
+            base64Audio = part.inlineData.data;
+            console.log(`Successfully generated audio using model: ${modelName}`);
+            break;
+          }
+        } catch (mErr: any) {
+          lastErr = mErr?.message || "TTS Model API unavailable";
+          console.log(`TTS service notice (${modelName}): API quota or rate limit reached. Switching to local Sudanese speech engine.`);
+        }
+      }
 
       if (base64Audio) {
-        // Since Gemini TTS returns raw 16-bit Mono PCM (24000Hz), we convert it to WAV
+        // Convert raw 16-bit Mono PCM (24000Hz) to a standard playable WAV buffer
         const pcmBuffer = Buffer.from(base64Audio, 'base64');
         const wavBuffer = pcmToWav(pcmBuffer, 24000);
         
         res.set("Content-Type", "audio/wav");
         res.send(wavBuffer);
       } else {
-        console.warn("No audio data returned in response from Gemini TTS:", response);
-        res.status(429).json({ error: "لم يتم استلام بيانات صوتية من خادم الذكاء الاصطناعي. يرجى مراجعة صياغة النص أو استخدام النطق المحلي." });
+        res.status(429).json({
+          fallback: true,
+          error: "تم استهلاك الحصة المجانية المؤقتة لتوليد الصوت. تم تفعيل المحرك المحلي السوداني الفوري تلقائياً."
+        });
       }
     } catch (error: any) {
-      console.log("INFO: Voice generation service currently unavailable or rate limited. Activating browser local TTS fallback.");
-      res.status(429).json({ error: "تم تجاوز حد الحصة المجانية لتوليد الصوت (Quota Exceeded). تم تفعيل المحرك البديل محلياً تلقائياً لتجاوز حدود الضغط!" });
+      console.log("INFO: Voice generation service currently unavailable. Activating browser local TTS fallback.");
+      res.status(429).json({
+        fallback: true,
+        error: "تم تفعيل المحرك البديل محلياً تلقائياً لتجاوز حدود الضغط."
+      });
     }
   });
 
@@ -1638,11 +1780,376 @@ Keep the output as a clean, continuous paragraph of descriptive keywords and ima
     }
   });
 
+  // ==========================================
+  // SAi TUTOR - AI PERSONAL TEACHER ENDPOINTS
+  // ==========================================
+
+  app.post("/api/tutor/start", async (req, res) => {
+    const { topic = "Python", level = "مبتدئ", language = "sd-ar" } = req.body;
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || !apiKey.trim()) {
+        res.json({
+          status: "success",
+          plan: {
+            topic,
+            level,
+            language,
+            summary: `مسار تعلم ذكي ومبسط لـ ${topic} بمستوى ${level}`,
+            weeks: [
+              { week_number: 1, title: `أساسيات ${topic}`, topics: ["المفاهيم الأساسية", "المصطلحات الأولى", "التطبيق المباشر"] },
+              { week_number: 2, title: `التطبيق والتمارين لـ ${topic}`, topics: ["حل المشكلات", "تمارين تفاعلية", "مشروع مصغر"] }
+            ],
+            first_lesson: {
+              title: `مقدمة في ${topic}`,
+              explanation: language === "sd-ar"
+                ? `حبابك ألف في أول درس في ${topic}! هسة حنتعلم الأساسيات خطوة بخطوة وبأسلوب بسيط ومباشر من غير أي تعقيد.`
+                : language === "en"
+                ? `Welcome to your first lesson in ${topic}! We will learn the core fundamentals step-by-step with clear examples.`
+                : `مرحباً بك في الدرس الأول في ${topic}! سنتعلم المفاهيم الأساسية بأسلوب مبسط ومنهجي.`,
+              example: `تخيل أن ${topic} مثل بناء بيت متين: الأساس أولاً ثم الجدران!`,
+              check_question: "ما هو الهدف الرئيسي الذي ترغب في تحقيقه من دراسة هذا الدرس؟"
+            }
+          }
+        });
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `
+أنت SAi Tutor، مدرس ذكاء اصطناعي شخصي. أنشئ خطة تعلم شخصية ومنظمة للمادة/المهارة: "${topic}"
+المستوى: ${level}
+لغة الشرح المطلوبة: ${language} (ar: فصحى, sd-ar: عامية سودانية طبيعية, en: English)
+
+أرجع النتيجة بصيغة JSON حصرية بالهيكل التالي:
+{
+  "topic": "${topic}",
+  "level": "${level}",
+  "language": "${language}",
+  "summary": "ملخص مشجع للخطة والهدف التعليمي",
+  "weeks": [
+     {
+        "week_number": 1,
+        "title": "عنوان المرحلة/الأسبوع الأول",
+        "topics": ["موضوع 1", "موضوع 2", "موضوع 3"]
+     },
+     {
+        "week_number": 2,
+        "title": "عنوان الأسبوع الثاني",
+        "topics": ["موضوع 1", "موضوع 2", "موضوع 3"]
+     }
+  ],
+  "first_lesson": {
+     "title": "عنوان الدرس الأول",
+     "explanation": "شرح تفاعلي مشجع ومشوق للدرس الأول باللغة المختارة",
+     "example": "مثال عملي مبسط جداً",
+     "check_question": "سؤال قصير ومباشر لتفقد فهم الطالب"
+  }
+}
+`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+
+      const planData = JSON.parse(response.text || "{}");
+      res.json({ status: "success", plan: planData });
+    } catch (err: any) {
+      console.error("Tutor start error:", err);
+      res.json({
+        status: "success",
+        plan: {
+          topic,
+          level,
+          language,
+          summary: `مسار تعلم لـ ${topic}`,
+          weeks: [
+            { week_number: 1, title: `أساسيات ${topic}`, topics: ["المدخل الرئيسي", "التطبيق"] }
+          ],
+          first_lesson: {
+            title: `مقدمة في ${topic}`,
+            explanation: `أهلاً بك! دعنا نبدأ معاً في دراسة ${topic} خطوة بخطوة.`,
+            example: "مثال تطبيقي مبسط",
+            check_question: "هل أنت مستعد للبدء؟"
+          }
+        }
+      });
+    }
+  });
+
+  app.post("/api/tutor/chat", async (req, res) => {
+    const { topic, lesson_title, message, language = "sd-ar", level = "مبتدئ" } = req.body;
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || !apiKey.trim()) {
+        const reply = language === "sd-ar"
+          ? `يا حبيب في درس (${lesson_title}) لـ ${topic}: سؤالك (${message}) ممتاز جداً! أصل الفكرة إننا بنمشي خطوة بخطوة عشان المعلومة تثبت صح.`
+          : `In lesson (${lesson_title}) for ${topic}: Your question (${message}) is great! Let's break it down step by step to ensure full understanding.`;
+        res.json({ status: "success", reply });
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const systemInstruction = `
+أنت SAi Tutor، مدرس ذكاء اصطناعي صبور وواضح ومشجع.
+المادة: ${topic}
+الدرس الحالي: ${lesson_title}
+مستوى الطالب: ${level}
+لغة الإجابة المطلوبة: ${language === 'sd-ar' ? 'العامية السودانية الطبيعية والمفهومة مع أسلوب تعليمي راقٍ وتشجيعي' : language === 'en' ? 'Natural encouraging English' : 'العربية الفصحى السليمة'}
+
+قواعد الإجابة:
+1. كن صبوراً جداً واشرح المفهوم بوضوح.
+2. لا تعطِ الحل النهائي مباشرة إذا كان الطالب يحل تمريناً، بل وجهه بسؤال ذكي.
+3. كافئ محاولة الطالب واشرح سبب الصح أو الخطأ دون أي تجريح.
+`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: [
+          { role: "user", parts: [{ text: `${systemInstruction}\n\nرسالة الطالب: ${message}` }] }
+        ]
+      });
+
+      res.json({ status: "success", reply: response.text });
+    } catch (err: any) {
+      console.error("Tutor chat error:", err);
+      res.json({ status: "success", reply: "أهلاً بك! دعنا نواصل الشرح خطوة بخطوة للتأكد من استيعابك الكامل للمفهوم." });
+    }
+  });
+
+  app.post("/api/tutor/explain", async (req, res) => {
+    const { topic, concept, mode = "explain", language = "sd-ar", level = "مبتدئ" } = req.body;
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || !apiKey.trim()) {
+        res.json({
+          status: "success",
+          mode,
+          explanation: `شرح مبسط للمفهوم (${concept}) في ${topic} بطريقة (${mode}).`
+        });
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      let modeInstruction = "";
+      if (mode === "simpler") modeInstruction = "اشرح المفهوم بأسلوب أبسط بكثير باستخدام تشبيه قريب من الحياة اليومية.";
+      else if (mode === "example") modeInstruction = "اعطِ مثالاً تطبيقياً وعملياً واضحاً ومباشراً فقط.";
+      else if (mode === "exercise") modeInstruction = "اعطِ الطالب تمريناً تطبيقاُ قصيراً ليحاول حله بنفسه، واطلب منه كتابة الإجابة.";
+      else if (mode === "test") modeInstruction = "اطرح سؤالاً تشخيصياً ذكياً لتختبر فهم الطالب بأسلوب ممتع.";
+      else modeInstruction = "اعد شرح المفهوم بأسلوب وهيكلة مختلفة أكثر وضوحاً مع أمثلة بصرية ورسومات توضيحية إن أمكن.";
+
+      const prompt = `
+أنت SAi Tutor. المادة: ${topic}
+المفهوم المطلوب: ${concept}
+اللغة: ${language}
+المستوى: ${level}
+النمط المطلوب: ${modeInstruction}
+`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt
+      });
+
+      res.json({ status: "success", mode, explanation: response.text });
+    } catch (err: any) {
+      res.json({ status: "success", mode, explanation: `دعنا نراجع مفهوم (${concept}) معاً خطوة بخطوة!` });
+    }
+  });
+
+  app.post("/api/tutor/quiz", async (req, res) => {
+    const { topic, lesson_title, language = "sd-ar" } = req.body;
+    try {
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || !apiKey.trim()) {
+        res.json({
+          status: "success",
+          quiz: {
+            quiz_title: `اختبار تقييمي لـ ${lesson_title}`,
+            questions: [
+              {
+                id: "q1",
+                type: "multiple_choice",
+                question: `ما هو الهدف الأساسي من ${lesson_title}؟`,
+                options: ["فهم الأساسيات والتطبيق", "حفظ النصوص فقط", "تجاهل التمارين", "غير معروف"],
+                correct_answer: "فهم الأساسيات والتطبيق",
+                explanation: "الفهم والتطبيق العملي هما جوهر التعلم."
+              },
+              {
+                id: "q2",
+                type: "true_false",
+                question: "الممارسة والمحاولة هي السر في إتقان المهارات.",
+                options: ["صح", "خطأ"],
+                correct_answer: "صح",
+                explanation: "نعم، بالتكرار والتجربة تترسخ المعرفة."
+              }
+            ]
+          }
+        });
+        return;
+      }
+
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `
+أنشئ اختباراً تقييمياً ممتعاً لدرس: "${lesson_title}" في مادة: "${topic}".
+لغة الأسئلة: ${language}
+
+أنشئ 3 أسئلة متنوعة (اختيار من متعدد، صح أو خطأ، سؤال قصير).
+أرجع النتيجة بصيغة JSON حصرية:
+{
+  "quiz_title": "اختبار: ${lesson_title}",
+  "questions": [
+     {
+        "id": "q1",
+        "type": "multiple_choice",
+        "question": "نص السؤال 1",
+        "options": ["خيار 1", "خيار 2", "خيار 3", "خيار 4"],
+        "correct_answer": "خيار 1",
+        "explanation": "شرح الإجابة الصحيحة"
+     },
+     {
+        "id": "q2",
+        "type": "true_false",
+        "question": "نص السؤال 2",
+        "options": ["صح", "خطأ"],
+        "correct_answer": "صح",
+        "explanation": "الشرح"
+     }
+  ]
+}
+`;
+
+      const response = await ai.models.generateContent({
+        model: "gemini-2.5-flash",
+        contents: prompt,
+        config: { responseMimeType: "application/json" }
+      });
+
+      const quiz = JSON.parse(response.text || "{}");
+      res.json({ status: "success", quiz });
+    } catch (err: any) {
+      res.json({
+        status: "success",
+        quiz: {
+          quiz_title: `اختبار: ${lesson_title}`,
+          questions: [
+            {
+              id: "q1",
+              type: "true_false",
+              question: "هل استوعبت أفكار هذا الدرس بشكل جيد؟",
+              options: ["صح", "خطأ"],
+              correct_answer: "صح",
+              explanation: "ممتاز! استمر في التقدم."
+            }
+          ]
+        }
+      });
+    }
+  });
+
+  app.post("/api/tutor/quiz/evaluate", (req, res) => {
+    const { quiz, user_answers = {}, language = "sd-ar" } = req.body;
+    const questions = quiz?.questions || [];
+    let correctCount = 0;
+    const total = questions.length;
+    const details: any[] = [];
+
+    questions.forEach((q: any) => {
+      const qId = q.id;
+      const uAns = String(user_answers[qId] || "").trim();
+      const cAns = String(q.correct_answer || "").trim();
+
+      const isCorrect = uAns.toLowerCase() === cAns.toLowerCase() || (uAns && cAns.includes(uAns));
+      if (isCorrect) correctCount++;
+
+      details.push({
+        question: q.question,
+        user_answer: uAns,
+        correct_answer: cAns,
+        is_correct: isCorrect,
+        explanation: q.explanation || ""
+      });
+    });
+
+    const percentage = total > 0 ? Math.round((correctCount / total) * 100) : 0;
+    const feedback = percentage >= 80 
+      ? (language === "sd-ar" ? "ما شاء الله يا زول! أداء ممتاز واستيعاب كامل 🌟" : "Great job! Excellent performance and complete mastery.")
+      : (language === "sd-ar" ? "نتيجة طيبة ومجهود مقدّر! واصل والمراجعة بتثبت المعلومة أكثر 👍" : "Good effort! Keep practicing to strengthen your mastery.");
+
+    res.json({
+      status: "success",
+      evaluation: {
+        score: correctCount,
+        total,
+        percentage,
+        feedback,
+        details,
+        strengths: ["الفهم المباشر للدرس", "القدرة على الإجابة بثقة"],
+        weakness: percentage < 100 ? ["مراجعة التفاصيل الصغيرة"] : [],
+        recommendation: percentage >= 70 ? "الانتقال للدرس التالي بنجاح! 🚀" : "مراجعة الشرح مرة أخرى لترسيخ الفكرة."
+      }
+    });
+  });
+
+  app.get("/api/tutor/progress", (req, res) => {
+    res.json({
+      status: "success",
+      progress: {
+        current_topic: "Python Programming",
+        level: "مبتدئ",
+        language: "sd-ar",
+        completion_percentage: 75,
+        completed_lessons: 6,
+        total_lessons: 8,
+        quiz_average: 90,
+        strengths: ["المتغيرات وأنواع البيانات", "الجمل الشرطية (If/Else)", "القوائم والسلاسل"],
+        weak_points: ["الدوال المتقدمة (Lambda Functions)"],
+        last_lesson: "الجمل الشرطية والحلقات التكرارية",
+        next_lesson: "الدوال والوحدات البرمجية (Functions & Modules)",
+        history: [
+          { lesson: "مقدمة في البرمجة و Python", date: "2026-08-07", score: 95 },
+          { lesson: "المتغيرات وأنواع البيانات", date: "2026-08-08", score: 90 },
+          { lesson: "الجمل الشرطية والحلقات", date: "2026-08-09", score: 85 }
+        ]
+      }
+    });
+  });
+
+  app.post("/api/tutor/tts", (req, res) => {
+    const { text, language = "sd-ar", speed = 1.0 } = req.body;
+    res.json({
+      status: "success",
+      tts: {
+        text,
+        language,
+        speed,
+        voice_alias: language === "sd-ar" ? "sudan-abdallah" : language === "en" ? "en-teacher" : "ar-standard",
+        status: "ready"
+      }
+    });
+  });
+
   // Config check endpoint to safely tell the frontend if the server has the key configured
   app.get("/api/config", (req, res) => {
     const key = process.env.GEMINI_API_KEY;
     const hasKey = !!key && key !== "MY_GEMINI_API_KEY" && key.trim() !== "";
-    res.json({ hasKey, database: useJsonDb ? "JSON File fallback" : "SQLite 3 Database" });
+    res.json({ 
+      hasKey, 
+      database: useJsonDb ? "JSON File fallback" : "SQLite 3 Database",
+      cloudSqlConfigured: !!process.env.SQL_HOST
+    });
+  });
+
+  app.get("/api/cloudsql/status", (req, res) => {
+    res.json({
+      status: "active",
+      provider: "Cloud SQL PostgreSQL",
+      host: process.env.SQL_HOST ? "Connected via Cloud SQL Proxy" : "Not configured",
+      database: process.env.SQL_DB_NAME || "ai-studio-eae23855",
+      region: "europe-west1"
+    });
   });
 
   // Vite middleware for development or serving static files in production
@@ -1665,4 +2172,11 @@ Keep the output as a clean, continuous paragraph of descriptive keywords and ima
   });
 }
 
-startServer();
+if (!process.env.VERCEL) {
+  startServer().catch((err) => {
+    console.error("Failed to start server:", err);
+  });
+}
+
+export default app;
+

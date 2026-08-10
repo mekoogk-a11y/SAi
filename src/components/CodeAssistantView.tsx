@@ -269,3 +269,5 @@ export const CodeAssistantView: React.FC<CodeAssistantViewProps> = ({
     </div>
   );
 };
+
+export default CodeAssistantView;
