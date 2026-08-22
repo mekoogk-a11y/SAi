@@ -10,6 +10,7 @@ import {
   Sparkles, 
   Code, 
   GraduationCap, 
+  BookOpen,
   Heart, 
   Search, 
   Folder, 
@@ -27,6 +28,7 @@ import {
   ArrowLeft,
   Type
 } from 'lucide-react';
+import { DashboardStats } from './DashboardStats';
 
 interface DashboardProps {
   setActiveView: (view: string) => void;
@@ -58,12 +60,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   };
 
   const quickShortcuts = [
-    { id: 'writer', title: '✨ كتابة', icon: Sparkles },
-    { id: 'search', title: '🔎 بحث ذكي', icon: Search },
-    { id: 'documents', title: '📄 تحليل ملف', icon: FileText },
+    { id: 'tutor', title: '🎓 المدرس الشخصي', icon: GraduationCap },
+    { id: 'tutor', title: '📖 شرح درس', icon: BookOpen },
+    { id: 'study', title: '🧩 حل مسألة', icon: Zap },
+    { id: 'transform', title: '📝 تلخيص نص', icon: Type },
     { id: 'translator', title: '🌐 ترجمة', icon: Globe },
-    { id: 'transform', title: '✍️ تحويل النص', icon: Type },
-    { id: 'studio', title: '🎙️ صوت إعلاني', icon: Mic2 }
+    { id: 'writer', title: '✍️ كتابة', icon: Sparkles },
+    { id: 'documents', title: '📄 تحليل ملف', icon: FileText },
+    { id: 'chat', title: '💬 اسأل SAi', icon: MessageSquare }
   ];
 
   const quickAccessCards = [
@@ -186,12 +190,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
     <div className="space-y-8 animate-fade-in pb-12">
       
       {/* Central Welcome Header & AI Input Box */}
-      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-zinc-950 via-zinc-900 to-emerald-950/80 border border-emerald-500/30 p-6 md:p-10 shadow-2xl backdrop-blur-xl text-center space-y-6">
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-r from-black via-zinc-950 to-emerald-950/80 border border-emerald-500/30 p-6 md:p-10 shadow-2xl backdrop-blur-xl text-center space-y-6">
         <div className="absolute -left-10 -bottom-10 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute right-0 top-0 w-80 h-80 bg-teal-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="relative z-10 max-w-2xl mx-auto space-y-3">
-          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-emerald-900/60 to-zinc-950 border border-emerald-500/40 text-emerald-300 text-xs font-black shadow-lg">
+          <div className="inline-flex items-center gap-2.5 px-4 py-2 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-emerald-900/70 to-black border border-emerald-500/40 text-emerald-300 text-xs font-black shadow-lg">
             <svg viewBox="0 0 100 100" className="w-6 h-6 text-emerald-400 shrink-0" fill="currentColor" fillOpacity="0.25" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="round">
               <path d="M38 10 L58 10 L68 18 L64 28 L82 42 L78 58 L62 76 L52 82 L42 86 L32 76 L22 74 L12 62 L10 44 L20 32 L26 18 Z" />
               <circle cx="50" cy="45" r="4" className="fill-emerald-400 animate-ping" />
@@ -211,7 +215,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
         {/* Central Input Box */}
         <div className="relative z-10 max-w-2xl mx-auto">
-          <div className="relative bg-zinc-900/90 border border-emerald-500/40 rounded-2xl p-2 md:p-3 shadow-2xl focus-within:border-emerald-400 transition-all">
+          <div className="relative bg-black/90 border border-emerald-500/40 rounded-2xl p-2 md:p-3 shadow-2xl focus-within:border-emerald-400 transition-all">
             <textarea
               rows={3}
               value={mainPrompt}
@@ -223,14 +227,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 }
               }}
               placeholder="اكتب سؤالك، فكرتك، أو النص الذي تريد صياغته هنا..."
-              className="w-full bg-transparent text-white placeholder-zinc-500 text-xs md:text-sm p-2 focus:outline-none resize-none leading-relaxed"
+              className="w-full bg-transparent text-white placeholder-zinc-400 text-xs md:text-sm p-2 focus:outline-none resize-none leading-relaxed font-medium"
             />
 
-            <div className="flex items-center justify-between border-t border-zinc-800/80 pt-2 px-1">
+            <div className="flex items-center justify-between border-t border-zinc-800 pt-2 px-1">
               <div className="flex items-center gap-2">
                 <button
                   onClick={() => setActiveView('documents')}
-                  className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-400 hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-xs font-bold"
+                  className="p-2 rounded-xl bg-zinc-950 border border-zinc-800 text-zinc-200 hover:text-emerald-400 transition-colors flex items-center gap-1.5 text-xs font-bold"
                   title="إرفاق ملف أو مستند"
                 >
                   <Paperclip className="w-4 h-4" />
@@ -247,7 +251,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
                   className={`p-2 rounded-xl border text-xs font-bold flex items-center gap-1.5 transition-all ${
                     isRecording 
                       ? 'bg-red-500/20 border-red-500 text-red-400 animate-pulse' 
-                      : 'bg-zinc-950 border-zinc-800 text-zinc-400 hover:text-cyan-400'
+                      : 'bg-zinc-950 border-zinc-800 text-zinc-200 hover:text-cyan-400'
                   }`}
                   title="إدخال صوتي"
                 >
@@ -274,9 +278,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
               const Icon = sc.icon;
               return (
                 <button
-                  key={sc.id}
+                  key={sc.title}
                   onClick={() => setActiveView(sc.id)}
-                  className="px-3.5 py-2 rounded-xl bg-zinc-900/80 hover:bg-zinc-800 border border-zinc-800 hover:border-emerald-500/40 text-zinc-300 hover:text-emerald-300 text-xs font-extrabold transition-all flex items-center gap-1.5"
+                  className="px-3.5 py-2 rounded-xl bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 hover:border-emerald-500/50 text-white hover:text-emerald-300 text-xs font-extrabold transition-all flex items-center gap-1.5 shadow-sm"
                 >
                   <Icon className="w-3.5 h-3.5 text-emerald-400" />
                   <span>{sc.title}</span>
@@ -291,11 +295,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-black text-zinc-100 dark:text-zinc-100 light-mode:text-slate-900 flex items-center gap-2">
+            <h2 className="text-lg font-black text-white flex items-center gap-2">
               <Bot className="w-5 h-5 text-emerald-400" />
               أدوات SAi والخدمات الذكية
             </h2>
-            <p className="text-xs text-zinc-400 dark:text-zinc-400 light-mode:text-slate-500">اختر أياً من الأدوات المتاحة للبدء فوراً</p>
+            <p className="text-xs text-zinc-300">اختر أياً من الأدوات المتاحة للبدء فوراً</p>
           </div>
         </div>
 
@@ -306,22 +310,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
               <button
                 key={card.id}
                 onClick={() => setActiveView(card.id)}
-                className={`p-5 rounded-2xl bg-gradient-to-br ${card.color} border bg-zinc-900/70 hover:bg-zinc-800/80 transition-all duration-300 text-right group flex flex-col justify-between space-y-3 hover:-translate-y-1 hover:shadow-xl`}
+                className={`p-5 rounded-2xl bg-gradient-to-br ${card.color} border bg-zinc-950 hover:bg-zinc-900 transition-all duration-300 text-right group flex flex-col justify-between space-y-3 hover:-translate-y-1 hover:shadow-xl shadow-md`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="p-2.5 rounded-xl bg-zinc-950/80 border border-zinc-800 text-emerald-400 group-hover:scale-110 transition-transform">
+                  <div className="p-2.5 rounded-xl bg-black border border-zinc-800 text-emerald-400 group-hover:scale-110 transition-transform">
                     <Icon className="w-5 h-5" />
                   </div>
-                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-zinc-950/80 border border-zinc-800 text-zinc-300">
+                  <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-black border border-zinc-800 text-zinc-200">
                     {card.badge}
                   </span>
                 </div>
 
                 <div>
-                  <h3 className="font-extrabold text-sm text-zinc-100 group-hover:text-emerald-400 transition-colors mb-1">
+                  <h3 className="font-extrabold text-sm text-white group-hover:text-emerald-400 transition-colors mb-1">
                     {card.title}
                   </h3>
-                  <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed">
+                  <p className="text-[11px] text-zinc-300 line-clamp-2 leading-relaxed">
                     {card.desc}
                   </p>
                 </div>
@@ -336,8 +340,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
         </div>
       </div>
 
+      {/* Operations Performance & Usage Analytics (DashboardStats) */}
+      <DashboardStats setActiveView={setActiveView} showToast={showToast} />
+
       {/* Suggested Quick Prompts */}
-      <div className="bg-zinc-900/60 border border-zinc-800 rounded-2xl p-5 space-y-3">
+      <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-5 space-y-3">
         <h3 className="text-xs font-black text-emerald-400 tracking-wider uppercase flex items-center gap-1.5">
           <Sparkles className="w-4 h-4 text-amber-400" />
           مقترحات سريعة للبدء
@@ -347,7 +354,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <button
               key={idx}
               onClick={() => setActiveView(idea.view)}
-              className="px-3 py-2 bg-zinc-950/80 hover:bg-zinc-800 border border-zinc-800 hover:border-emerald-500/40 rounded-xl text-xs text-zinc-300 hover:text-emerald-300 transition-all text-right"
+              className="px-3 py-2 bg-black hover:bg-zinc-900 border border-zinc-800 hover:border-emerald-500/40 rounded-xl text-xs text-zinc-200 hover:text-white transition-all text-right"
             >
               ✨ {idea.title}
             </button>
@@ -356,13 +363,13 @@ export const Dashboard: React.FC<DashboardProps> = ({
       </div>
 
       {/* Contribution National Banner */}
-      <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-950/80 via-teal-950/60 to-zinc-950 border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-950/90 via-teal-950/70 to-black border border-emerald-500/30 flex flex-col sm:flex-row items-center justify-between gap-4">
         <div className="space-y-1 text-center sm:text-right">
           <div className="inline-flex items-center gap-1.5 text-xs font-black text-emerald-400">
             <Heart className="w-4 h-4 fill-emerald-500/40 text-emerald-400" />
             <span>مشروع وطني سوداني غير ربحي 🇸🇩</span>
           </div>
-          <p className="text-xs text-zinc-300 max-w-xl leading-relaxed">
+          <p className="text-xs text-zinc-200 max-w-xl leading-relaxed">
             التطبيق متاح مجاناً 100% لدعم الطلاب والباحثين والمطورين في السودان. يمكنك المساهمة في دعم وتطوير المنصة وسيرفرات الذكاء الاصطناعي عبر التواصل المباشر مع المطور.
           </p>
         </div>

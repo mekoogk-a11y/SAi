@@ -36,6 +36,7 @@ import {
 
 import { TopBar } from './components/TopBar';
 import { SUDANESE_VOICE_PERSONAS, VoicePersona, SpeechQualityEngine } from './lib/voicePersonas';
+import { recordOperation } from './lib/usageStats';
 
 // Lazy loaded View components for ultra-fast initial page load & bundle splitting
 const Dashboard = lazy(() => import('./components/Dashboard'));
@@ -331,6 +332,7 @@ export function App() {
       created_at: new Date().toISOString()
     };
     setSavedAdVoices(prev => [newItem, ...prev]);
+    recordOperation('voice', `حفظ صوت: ${item.title || 'إعلان سوداني'}`, item.voiceName);
     showToast("تم حفظ الصوت الإعلاني في قسم المفضلة بالملف الشخصي بنجاح! 🇸🇩❤️");
   };
 
@@ -580,6 +582,7 @@ export function App() {
       const data = await res.json();
       if (data.reply) {
         setChatMessages(prev => [...prev, { role: 'assistant', text: data.reply }]);
+        recordOperation('chat', `محادثة SAi: ${messageToSend.slice(0, 30)}...`, `نمط: ${aiPersona}`);
       } else {
         throw new Error(data.error || "خطأ في معالجة الرد.");
       }
@@ -643,8 +646,8 @@ export function App() {
   ];
 
   return (
-    <div className={`min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans transition-colors duration-300 ${
-      themeMode === 'light' ? 'light-mode bg-slate-50 text-slate-900' : ''
+    <div className={`min-h-screen bg-black text-white flex flex-col font-sans transition-colors duration-300 ${
+      themeMode === 'light' ? 'light-mode bg-black text-white' : ''
     }`}>
       
       {/* Top Header */}
@@ -680,14 +683,14 @@ export function App() {
       <div className="flex-1 max-w-7xl w-full mx-auto flex gap-6 p-4 md:p-6">
         
         {/* Sidebar Navigation */}
-        <aside className={`fixed inset-y-0 right-0 z-40 w-72 bg-zinc-950/95 dark:bg-zinc-950/95 light-mode:bg-white/95 border-l border-zinc-800/80 light-mode:border-slate-200 p-4 flex flex-col justify-between transform transition-transform duration-300 md:relative md:translate-x-0 ${
+        <aside className={`fixed inset-y-0 right-0 z-40 w-72 bg-black/95 dark:bg-black/95 border-l border-zinc-800/90 p-4 flex flex-col justify-between transform transition-transform duration-300 md:relative md:translate-x-0 ${
           sidebarOpen ? 'translate-x-0 shadow-2xl' : 'translate-x-full md:translate-x-0'
         }`}>
           
           <div className="space-y-6">
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80 light-mode:border-slate-200 md:hidden">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800/80 md:hidden">
               <span className="font-black text-sm text-emerald-400">القائمة الرئيسية</span>
-              <button onClick={() => setSidebarOpen(false)} className="text-zinc-400">
+              <button onClick={() => setSidebarOpen(false)} className="text-zinc-300 hover:text-white">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -706,12 +709,12 @@ export function App() {
                     }}
                     className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold text-right transition-all group ${
                       isActive
-                        ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-400 border border-emerald-500/30 shadow-md'
-                        : 'text-zinc-400 dark:text-zinc-400 light-mode:text-slate-600 hover:text-zinc-200 hover:bg-zinc-900/60 light-mode:hover:bg-slate-100'
+                        ? 'bg-gradient-to-r from-emerald-500/20 to-teal-500/10 text-emerald-300 border border-emerald-500/30 shadow-md'
+                        : 'text-zinc-300 hover:text-white hover:bg-zinc-900/80'
                     }`}
                   >
                     <Icon className={`w-4 h-4 shrink-0 transition-transform group-hover:scale-110 ${
-                      isActive ? 'text-emerald-400' : 'text-zinc-400 light-mode:text-slate-500'
+                      isActive ? 'text-emerald-400' : 'text-zinc-400 group-hover:text-emerald-300'
                     }`} />
                     <span className="truncate">{item.label}</span>
                   </button>
@@ -721,12 +724,12 @@ export function App() {
           </div>
 
           {/* Support SAi Banner */}
-          <div className="p-3.5 bg-zinc-900/80 dark:bg-zinc-900/80 light-mode:bg-slate-100 border border-zinc-800 dark:border-zinc-800 light-mode:border-slate-200 rounded-2xl space-y-1.5 text-center cursor-pointer hover:border-emerald-500/40 transition-all" onClick={() => changeActiveView('dedication')}>
+          <div className="p-3.5 bg-zinc-950 border border-zinc-800/90 rounded-2xl space-y-1.5 text-center cursor-pointer hover:border-emerald-500/40 transition-all" onClick={() => changeActiveView('dedication')}>
             <div className="flex items-center justify-center gap-1.5 text-emerald-400 font-extrabold text-xs">
               <Heart className="w-3.5 h-3.5 fill-emerald-500/30" />
               <span>مركز دعم وتطوير SAi</span>
             </div>
-            <p className="text-[10px] text-zinc-400 light-mode:text-slate-500">مبادرة وطنية تقنية لخدمة الطلاب والباحثين 🇸🇩</p>
+            <p className="text-[10px] text-zinc-300">مبادرة وطنية تقنية لخدمة الطلاب والباحثين 🇸🇩</p>
           </div>
 
         </aside>

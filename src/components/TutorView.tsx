@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { tutorService, TUTOR_TONE_CONFIGS, TutorLevelStyle } from '../lib/tutorService';
 import {
   GraduationCap,
   BookOpen,
@@ -29,7 +30,12 @@ import {
   Sliders,
   Check,
   TrendingUp,
-  FileText
+  FileText,
+  Paperclip,
+  Image as ImageIcon,
+  Copy,
+  X,
+  Repeat
 } from 'lucide-react';
 
 interface TutorViewProps {
@@ -37,7 +43,7 @@ interface TutorViewProps {
 }
 
 export type TutorLanguage = 'ar' | 'sd-ar' | 'en';
-export type TutorLevel = 'مبتدئ' | 'متوسط' | 'متقدم';
+export type TutorLevel = 'مبتدئ' | 'متوسط' | 'متقدم' | 'شرح مبسط' | 'شرح أكاديمي';
 
 interface LessonPlan {
   topic: string;
@@ -116,11 +122,32 @@ export const TutorView: React.FC<TutorViewProps> = ({ showToast }) => {
   const [isExplaining, setIsExplaining] = useState<boolean>(false);
   const [activeExplainMode, setActiveExplainMode] = useState<string>('explain');
 
+  // File & Image Attachments State
+  const [attachedImage, setAttachedImage] = useState<string | null>(null);
+  const [attachedFileName, setAttachedFileName] = useState<string | null>(null);
+  const [attachedFileText, setAttachedFileText] = useState<string | null>(null);
+  const imageInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
   // Interactive Chat State
-  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [messages, setMessages] = useState<ChatMessage[]>(() => {
+    try {
+      const saved = localStorage.getItem('sai_tutor_messages');
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
   const [chatInput, setChatInput] = useState<string>('');
   const [isSendingChat, setIsSendingChat] = useState<boolean>(false);
   const chatBottomRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    try {
+      if (messages.length > 0) {
+        localStorage.setItem('sai_tutor_messages', JSON.stringify(messages));
+      }
+    } catch (e) {}
+  }, [messages]);
 
   // Text-To-Speech (TTS) State
   const [isPlayingAudio, setIsPlayingAudio] = useState<boolean>(false);
@@ -198,13 +225,12 @@ export const TutorView: React.FC<TutorViewProps> = ({ showToast }) => {
     showToast('جاري إعداد مسار التعلم الشخصي وتخصيص المدرس... 🎓');
 
     try {
-      const res = await fetch('/api/tutor/start', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: topic.trim(), level, language })
+      const data = await tutorService.startLearningPath({
+        topic: topic.trim(),
+        level: level as TutorLevelStyle,
+        language
       });
 
-      const data = await res.json();
       if (data.status === 'success' && data.plan) {
         const p: LessonPlan = data.plan;
         setPlan(p);
@@ -215,10 +241,10 @@ export const TutorView: React.FC<TutorViewProps> = ({ showToast }) => {
 
         // Initial welcome chat message
         const welcomeText = language === 'sd-ar'
-          ? `يا حبيب أهلاً بك! أنا مدرّسك الذكي لـ (${topic}). خطتنا بدأت وهسة حنتعلم بأسلوب بسيط وسوداني مريح. اقرأ الشرح فوق واسألني في أي وقت!`
+          ? `يا حبيب أهلاً بك! أنا مدرّسك الذكي لـ (${topic}). نمط الشرح المختار: (${TUTOR_TONE_CONFIGS[level as TutorLevelStyle]?.label || level}). اقرأ الشرح فوق واسألني في أي وقت!`
           : language === 'en'
-          ? `Welcome! I am your AI Tutor for (${topic}). Let's build your mastery step by step. Read the explanation above and ask me anything!`
-          : `أهلاً بك! أنا معلمك الذكي لمادة (${topic}). تم إعداد مسار التعلم الخصيص لك. اقرأ الشرح واسألني عن أي نقطة!`;
+          ? `Welcome! I am your AI Tutor for (${topic}). Style: (${level}). Read the explanation above and ask me anything!`
+          : `أهلاً بك! أنا معلمك الذكي لمادة (${topic}). تم إعداد مسار التعلم الخصيص لك بنمط (${level}). اقرأ الشرح واسألني عن أي نقطة!`;
 
         setMessages([
           { id: 'm1', sender: 'tutor', text: welcomeText, timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' }) }
@@ -244,26 +270,21 @@ export const TutorView: React.FC<TutorViewProps> = ({ showToast }) => {
     setActiveExplainMode(mode);
 
     try {
-      const res = await fetch('/api/tutor/explain', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic,
-          concept: currentLessonTitle,
-          mode,
-          language,
-          level
-        })
+      const data = await tutorService.explainConcept({
+        topic,
+        concept: currentLessonTitle,
+        mode,
+        language,
+        level: level as TutorLevelStyle
       });
 
-      const data = await res.json();
       if (data.status === 'success') {
         const explanationText = data.explanation;
         setCurrentExplanation(explanationText);
 
         const tutorMsg = language === 'sd-ar'
-          ? `إليك الشرح بأسلوب (${mode === 'simpler' ? 'أبسط' : mode === 'example' ? 'أمثلة عملية' : mode === 'exercise' ? 'تمرين تطبيقي' : 'جديد'}): \n\n${explanationText}`
-          : `Here is the explanation in (${mode}) style:\n\n${explanationText}`;
+          ? `إليك الشرح بأسلوب (${mode === 'simpler' ? 'أبسط' : mode === 'example' ? 'أمثلة عملية' : mode === 'exercise' ? 'تمرين تطبيقي' : 'جديد'}) [النمط: ${level}]: \n\n${explanationText}`
+          : `Here is the explanation in (${mode}) style [Tone: ${level}]:\n\n${explanationText}`;
 
         setMessages(prev => [
           ...prev,
@@ -284,37 +305,93 @@ export const TutorView: React.FC<TutorViewProps> = ({ showToast }) => {
     }
   };
 
-  // Send Chat Message to Tutor
-  const handleSendChat = async () => {
-    if (!chatInput.trim() || isSendingChat) return;
+  // Image upload handler
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      showToast('يرجى اختيار ملف صورة صالح', 'error');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      setAttachedImage(reader.result as string);
+      showToast('تمت إضافة الصورة بنجاح! 📸');
+    };
+    reader.readAsDataURL(file);
+  };
 
-    const userText = chatInput.trim();
-    setChatInput('');
+  // File upload handler
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAttachedFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const text = reader.result as string;
+      setAttachedFileText(text);
+      showToast(`تم إرفاق المستند (${file.name}) بنجاح! 📄`);
+    };
+    reader.readAsText(file);
+  };
+
+  // Copy text helper
+  const copyToClipboard = (txt: string) => {
+    navigator.clipboard.writeText(txt);
+    showToast('تم نسخ الإجابة بنجاح! 📋');
+  };
+
+  // Speak single message helper
+  const speakMessage = (txt: string) => {
+    if ('speechSynthesis' in window) {
+      window.speechSynthesis.cancel();
+      const utterance = new SpeechSynthesisUtterance(txt);
+      utterance.lang = language === 'en' ? 'en-US' : 'ar-SA';
+      utterance.rate = speechSpeed;
+      window.speechSynthesis.speak(utterance);
+      showToast('جاري قراءة الشرح... 🔊');
+    }
+  };
+
+  // Send Chat Message to Tutor
+  const handleSendChat = async (customPrompt?: string) => {
+    const promptToSend = customPrompt || chatInput.trim();
+    if ((!promptToSend && !attachedImage && !attachedFileText) || isSendingChat) return;
+
+    let fullMessage = promptToSend;
+    if (attachedFileName && attachedFileText) {
+      fullMessage = `[مرفق ملف: ${attachedFileName}]\nمحتوى الملف:\n${attachedFileText.slice(0, 3000)}\n\n${fullMessage}`;
+    }
+
+    if (!customPrompt) setChatInput('');
+    const imageToSend = attachedImage;
+    
+    // Reset attachments
+    setAttachedImage(null);
+    setAttachedFileName(null);
+    setAttachedFileText(null);
+    
     setIsSendingChat(true);
 
     const userMsg: ChatMessage = {
       id: `u-${Date.now()}`,
       sender: 'user',
-      text: userText,
+      text: fullMessage || 'شرح الصورة / الملف المرفق',
       timestamp: new Date().toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })
     };
 
     setMessages(prev => [...prev, userMsg]);
 
     try {
-      const res = await fetch('/api/tutor/chat', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          topic,
-          lesson_title: currentLessonTitle,
-          message: userText,
-          language,
-          level
-        })
+      const data = await tutorService.sendChatMessage({
+        topic,
+        lesson_title: currentLessonTitle || topic,
+        message: fullMessage || 'يرجى تحليل الشرح وإجابة السؤال المرفق',
+        language,
+        level: level as TutorLevelStyle,
+        image: imageToSend
       });
 
-      const data = await res.json();
       if (data.status === 'success') {
         const tutorReply: ChatMessage = {
           id: `t-${Date.now()}`,
@@ -328,6 +405,17 @@ export const TutorView: React.FC<TutorViewProps> = ({ showToast }) => {
       showToast('تعذر إرسال السؤال للمدرس', 'error');
     } finally {
       setIsSendingChat(false);
+    }
+  };
+
+  // Regenerate last reply
+  const handleRegenerateLastReply = () => {
+    const lastUserMsg = [...messages].reverse().find(m => m.sender === 'user');
+    if (lastUserMsg) {
+      handleSendChat(lastUserMsg.text);
+      showToast('جاري إعادة صياغة الشرح... 🔄');
+    } else {
+      handleReExplain('explain');
     }
   };
 
@@ -534,22 +622,31 @@ export const TutorView: React.FC<TutorViewProps> = ({ showToast }) => {
             />
           </div>
 
-          {/* Level Selector */}
-          <div className="space-y-1.5">
+          {/* Level & Style Selector */}
+          <div className="space-y-1.5 flex-1">
             <label className="text-xs font-black text-zinc-300 flex items-center gap-1">
               <Sliders className="w-3.5 h-3.5 text-emerald-400" />
-              <span>مستواك:</span>
+              <span>مستوى وأسلوب الشرح:</span>
             </label>
-            <div className="flex items-center bg-zinc-950 p-1 rounded-2xl border border-zinc-800">
-              {(['مبتدئ', 'متوسط', 'متقدم'] as TutorLevel[]).map(lvl => (
+            <div className="flex flex-wrap items-center gap-1.5 bg-zinc-950 p-1.5 rounded-2xl border border-zinc-800">
+              {([
+                { id: 'مبتدئ', label: 'مبتدئ' },
+                { id: 'متوسط', label: 'متوسط' },
+                { id: 'متقدم', label: 'متقدم' },
+                { id: 'شرح مبسط', label: '💡 شرح مبسط (أمثلة من الواقع السوداني)' },
+                { id: 'شرح أكاديمي', label: '🎓 شرح أكاديمي (لغة فصحى دقيقة)' }
+              ] as { id: TutorLevel; label: string }[]).map(item => (
                 <button
-                  key={lvl}
-                  onClick={() => setLevel(lvl)}
-                  className={`px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                    level === lvl ? 'bg-emerald-500 text-zinc-950 font-black' : 'text-zinc-400 hover:text-white'
+                  key={item.id}
+                  onClick={() => setLevel(item.id)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
+                    level === item.id 
+                      ? 'bg-emerald-500 text-zinc-950 font-black shadow-md shadow-emerald-500/20' 
+                      : 'text-zinc-400 hover:text-white hover:bg-zinc-900'
                   }`}
+                  title={item.label}
                 >
-                  {lvl}
+                  {item.label}
                 </button>
               ))}
             </div>
@@ -779,45 +876,157 @@ export const TutorView: React.FC<TutorViewProps> = ({ showToast }) => {
 
             {/* Interactive Tutor Chat Assistant Panel */}
             <div className="bg-zinc-900/90 border border-zinc-800 rounded-3xl p-5 md:p-6 space-y-4 shadow-xl">
-              <h3 className="text-xs font-black text-zinc-300 flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-emerald-400" />
-                <span>اسأل المدرّس الذكي عن أي نقطة في هذا الدرس:</span>
-              </h3>
+              <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+                <h3 className="text-xs font-black text-zinc-300 flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-emerald-400" />
+                  <span>اسأل المدرّس الذكي عن أي نقطة في هذا الدرس:</span>
+                </h3>
+
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={handleRegenerateLastReply}
+                    disabled={isSendingChat}
+                    className="px-2.5 py-1 bg-zinc-950 border border-zinc-800 text-zinc-300 hover:text-emerald-400 rounded-xl text-[10px] font-bold flex items-center gap-1 transition-all"
+                    title="إعادة توليد الإجابة الأخيرة"
+                  >
+                    <Repeat className="w-3 h-3 text-emerald-400" />
+                    <span>إعادة الإجابة</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Hidden File & Image Inputs */}
+              <input
+                type="file"
+                ref={imageInputRef}
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".txt,.pdf,.doc,.docx"
+                className="hidden"
+                onChange={handleFileUpload}
+              />
 
               {/* Chat Messages Feed */}
-              <div className="h-64 overflow-y-auto bg-zinc-950/80 border border-zinc-800/80 rounded-2xl p-4 space-y-3 shadow-inner">
-                {messages.map((m) => (
-                  <div
-                    key={m.id}
-                    className={`flex flex-col ${m.sender === 'user' ? 'items-start' : 'items-end'}`}
-                  >
-                    <div className={`max-w-[85%] rounded-2xl p-3 text-xs leading-relaxed ${
-                      m.sender === 'user'
-                        ? 'bg-emerald-500 text-zinc-950 font-bold rounded-tr-none'
-                        : 'bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-tl-none'
-                    }`}>
-                      {m.text}
-                    </div>
-                    <span className="text-[10px] text-zinc-600 px-1 pt-1">{m.timestamp}</span>
+              <div className="h-72 overflow-y-auto bg-zinc-950/80 border border-zinc-800/80 rounded-2xl p-4 space-y-3 shadow-inner">
+                {messages.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-center p-4 text-zinc-500 space-y-2">
+                    <GraduationCap className="w-8 h-8 text-emerald-500/40 animate-bounce" />
+                    <p className="text-xs font-bold">مرحباً بك! أنا مدرسك الذكي SAi. يمكنك طرح أي سؤال أو مسألة هنا وسأشرحها لك خطوة بخطوة.</p>
                   </div>
-                ))}
+                ) : (
+                  messages.map((m) => (
+                    <div
+                      key={m.id}
+                      className={`flex flex-col ${m.sender === 'user' ? 'items-start' : 'items-end'}`}
+                    >
+                      <div className={`max-w-[85%] rounded-2xl p-3.5 text-xs leading-relaxed space-y-2 ${
+                        m.sender === 'user'
+                          ? 'bg-emerald-500 text-zinc-950 font-bold rounded-tr-none shadow-md'
+                          : 'bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-tl-none shadow-md'
+                      }`}>
+                        <div className="whitespace-pre-wrap">{m.text}</div>
+
+                        {/* Action buttons on Tutor messages */}
+                        {m.sender === 'tutor' && (
+                          <div className="flex items-center gap-2 pt-2 border-t border-zinc-800/80 text-[10px]">
+                            <button
+                              onClick={() => speakMessage(m.text)}
+                              className="px-2 py-1 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-emerald-400 rounded-lg flex items-center gap-1 font-bold transition-all"
+                              title="استمع إلى الشرح بصوت واضح"
+                            >
+                              <Volume2 className="w-3 h-3 text-emerald-400" />
+                              <span>استماع</span>
+                            </button>
+
+                            <button
+                              onClick={() => copyToClipboard(m.text)}
+                              className="px-2 py-1 bg-zinc-950 hover:bg-zinc-800 border border-zinc-800 text-zinc-300 rounded-lg flex items-center gap-1 font-bold transition-all"
+                              title="نسخ النص"
+                            >
+                              <Copy className="w-3 h-3 text-zinc-400" />
+                              <span>نسخ</span>
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      <span className="text-[10px] text-zinc-600 px-1 pt-1">{m.timestamp}</span>
+                    </div>
+                  ))
+                )}
                 <div ref={chatBottomRef} />
               </div>
 
+              {/* Attachment Previews */}
+              {(attachedImage || attachedFileName) && (
+                <div className="flex items-center gap-2 p-2 bg-zinc-950 border border-emerald-500/30 rounded-2xl">
+                  {attachedImage && (
+                    <div className="relative w-12 h-12 rounded-xl overflow-hidden border border-emerald-500/40">
+                      <img src={attachedImage} alt="مرفق" className="w-full h-full object-cover" />
+                      <button
+                        onClick={() => setAttachedImage(null)}
+                        className="absolute top-0.5 right-0.5 p-0.5 bg-black/80 rounded-full text-white"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+                    </div>
+                  )}
+
+                  {attachedFileName && (
+                    <div className="flex items-center justify-between flex-1 bg-zinc-900 px-3 py-1.5 rounded-xl border border-zinc-800 text-xs">
+                      <div className="flex items-center gap-1.5 text-emerald-300 font-bold truncate">
+                        <FileText className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{attachedFileName}</span>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setAttachedFileName(null);
+                          setAttachedFileText(null);
+                        }}
+                        className="text-zinc-400 hover:text-red-400 p-1"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Chat Input Bar */}
               <div className="flex items-center gap-2">
+                <button
+                  onClick={() => imageInputRef.current?.click()}
+                  className="p-2.5 bg-zinc-950 border border-zinc-800 hover:border-emerald-500/40 text-zinc-400 hover:text-emerald-400 rounded-2xl transition-all"
+                  title="رفع صورة للدرس أو المسألة"
+                >
+                  <ImageIcon className="w-4 h-4" />
+                </button>
+
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2.5 bg-zinc-950 border border-zinc-800 hover:border-emerald-500/40 text-zinc-400 hover:text-emerald-400 rounded-2xl transition-all"
+                  title="رفع مستند أو ملف دراسي"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
+
                 <input
                   type="text"
                   value={chatInput}
                   onChange={(e) => setChatInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSendChat()}
-                  placeholder="اسأل معلمك: لم أفهم هذه النقطة، أعطني مثالاً عملياً..."
+                  placeholder="اسأل معلمك: لم أفهم هذه النقطة، حل لي هذه المسألة..."
                   className="flex-1 bg-zinc-950 border border-zinc-800 rounded-2xl px-4 py-2.5 text-xs text-white focus:outline-none focus:border-emerald-500"
                 />
+
                 <button
-                  onClick={handleSendChat}
-                  disabled={isSendingChat || !chatInput.trim()}
-                  className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-zinc-950 font-black rounded-2xl text-xs transition-all flex items-center gap-1"
+                  onClick={() => handleSendChat()}
+                  disabled={isSendingChat || (!chatInput.trim() && !attachedImage && !attachedFileText)}
+                  className="px-4 py-2.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-40 text-zinc-950 font-black rounded-2xl text-xs transition-all flex items-center gap-1 cursor-pointer"
                 >
                   {isSendingChat ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   <span>إرسال</span>

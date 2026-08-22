@@ -21,6 +21,7 @@ import {
   ArrowRight,
   Eye
 } from 'lucide-react';
+import { recordOperation } from '../lib/usageStats';
 
 interface ImageGenViewProps {
   imagePrompt: string;
@@ -125,6 +126,7 @@ export const ImageGenView: React.FC<ImageGenViewProps> = ({
           createdAt: new Date().toLocaleTimeString('ar-SD', { hour: '2-digit', minute: '2-digit' })
         };
         setImageHistory(prev => [newItem, ...prev]);
+        recordOperation('image', `توليد صورة: ${imagePrompt.slice(0, 30)}...`, `ستايل: ${selectedStyle}`);
 
         // Automatically switch to result screen without leaving Image Generator module
         setActiveTab('result');

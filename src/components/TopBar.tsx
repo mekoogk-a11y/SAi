@@ -59,7 +59,7 @@ export const TopBar: React.FC<TopBarProps> = ({
   const unreadCount = notifications.filter(n => !n.read).length;
 
   return (
-    <header className="sticky top-0 z-30 bg-zinc-950/80 dark:bg-zinc-950/80 light-mode:bg-white/80 backdrop-blur-xl border-b border-zinc-800/80 light-mode:border-slate-200 px-4 py-3 transition-colors">
+    <header className="sticky top-0 z-30 bg-black/95 backdrop-blur-xl border-b border-zinc-800/90 px-4 py-3 transition-colors">
       <div className="max-w-7xl mx-auto flex items-center justify-between gap-3">
         
         {/* Brand & Menu Button */}
@@ -67,11 +67,11 @@ export const TopBar: React.FC<TopBarProps> = ({
           {setSidebarOpen && (
             <button
               onClick={() => setSidebarOpen(prev => !prev)}
-              className="p-2.5 bg-zinc-900 dark:bg-zinc-900 light-mode:bg-slate-100 hover:bg-zinc-800 border border-zinc-800 dark:border-zinc-800 light-mode:border-slate-300 text-zinc-200 light-mode:text-slate-800 rounded-xl transition-all flex items-center gap-1.5 shadow-md hover:border-emerald-500/40"
+              className="p-2.5 bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 hover:border-emerald-500/50 text-white rounded-xl transition-all flex items-center gap-1.5 shadow-md"
               title="فتح / إغلاق القائمة"
             >
               <Menu className="w-5 h-5 text-emerald-400" />
-              <span className="text-xs font-black">القائمة</span>
+              <span className="text-xs font-black text-white">القائمة</span>
             </button>
           )}
 
@@ -84,21 +84,21 @@ export const TopBar: React.FC<TopBarProps> = ({
             </div>
             
             {/* Sudan Map Frame Badge */}
-            <div className="flex items-center gap-2 bg-emerald-950/60 dark:bg-emerald-950/60 light-mode:bg-emerald-50 border border-emerald-500/40 px-3 py-1.5 rounded-2xl shadow-inner">
+            <div className="flex items-center gap-2 bg-emerald-950/80 border border-emerald-500/40 px-3 py-1.5 rounded-2xl shadow-inner">
               <svg viewBox="0 0 100 100" className="w-7 h-7 text-emerald-400 shrink-0" fill="currentColor" fillOpacity="0.2" stroke="currentColor" strokeWidth="3.5" strokeLinejoin="round">
                 <path d="M38 10 L58 10 L68 18 L64 28 L82 42 L78 58 L62 76 L52 82 L42 86 L32 76 L22 74 L12 62 L10 44 L20 32 L26 18 Z" />
                 <circle cx="50" cy="45" r="4" className="fill-emerald-400" />
               </svg>
               <div>
                 <div className="flex items-center gap-1.5">
-                  <span className="font-black text-xs md:text-sm text-emerald-300 dark:text-emerald-300 light-mode:text-emerald-800 tracking-tight">
+                  <span className="font-black text-xs md:text-sm text-emerald-300 tracking-tight">
                     الذكاء الاصطناعي السوداني
                   </span>
                   <span className="text-[9px] bg-emerald-500/20 text-emerald-300 font-extrabold px-1.5 py-0.2 rounded border border-emerald-500/30">
                     🇸🇩 SAi
                   </span>
                 </div>
-                <p className="text-[9px] text-zinc-400 dark:text-zinc-400 light-mode:text-slate-500 hidden sm:block">
+                <p className="text-[9px] text-zinc-300 hidden sm:block">
                   المنصة الذكية الشاملة
                 </p>
               </div>
@@ -119,12 +119,12 @@ export const TopBar: React.FC<TopBarProps> = ({
               }
             }}
             placeholder="بحث شامل في المحادثات، المستندات، والمعرفة..."
-            className="w-full pl-4 pr-10 py-2 bg-zinc-900/90 dark:bg-zinc-900/90 light-mode:bg-slate-100 border border-zinc-800 dark:border-zinc-800 light-mode:border-slate-300 rounded-xl text-xs text-zinc-100 light-mode:text-slate-900 placeholder-zinc-500 focus:outline-none focus:border-emerald-500/60 transition-all"
+            className="w-full pl-4 pr-10 py-2 bg-zinc-950 border border-zinc-800 focus:border-emerald-500/80 rounded-xl text-xs text-white placeholder-zinc-400 focus:outline-none transition-all shadow-inner"
           />
           {globalSearchQuery && (
             <button 
               onClick={() => setGlobalSearchQuery('')}
-              className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200"
+              className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-white"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -164,7 +164,7 @@ export const TopBar: React.FC<TopBarProps> = ({
                 setAppLanguage(nextLang);
                 showToast(nextLang === 'ar' ? "تم التحويل إلى اللغة العربية 🇸🇩" : "Switched to English 🇬🇧");
               }}
-              className="px-2.5 py-1.5 bg-zinc-900 dark:bg-zinc-900 light-mode:bg-slate-100 hover:bg-zinc-800 border border-zinc-800 dark:border-zinc-800 light-mode:border-slate-300 text-zinc-300 light-mode:text-slate-700 rounded-xl text-xs font-bold transition-all flex items-center gap-1"
+              className="px-2.5 py-1.5 bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 text-zinc-200 hover:text-white rounded-xl text-xs font-bold transition-all flex items-center gap-1"
               title="تغيير اللغة / Switch Language"
             >
               <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
@@ -178,25 +178,20 @@ export const TopBar: React.FC<TopBarProps> = ({
               const nextTheme = themeMode === 'dark' ? 'light' : 'dark';
               setThemeMode(nextTheme);
               localStorage.setItem('sudan_ai_theme', nextTheme);
-              if (nextTheme === 'light') {
-                document.documentElement.classList.add('light-mode');
-              } else {
-                document.documentElement.classList.remove('light-mode');
-              }
             }}
-            className="p-2 bg-zinc-900 dark:bg-zinc-900 light-mode:bg-slate-100 hover:bg-zinc-800 border border-zinc-800 dark:border-zinc-800 light-mode:border-slate-300 text-zinc-300 light-mode:text-slate-700 rounded-xl transition-all"
-            title={themeMode === 'dark' ? 'تفعيل الوضع المضيء' : 'تفعيل الوضع ليلي'}
+            className="p-2 bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 text-white rounded-xl transition-all"
+            title={themeMode === 'dark' ? 'الوضع الليلي الفائق مفعّل' : 'تفعيل الوضع الليلي الفائق'}
           >
-            {themeMode === 'dark' ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-emerald-600" />}
+            {themeMode === 'dark' ? <Moon className="w-4 h-4 text-emerald-400" /> : <Sun className="w-4 h-4 text-amber-400" />}
           </button>
 
           {/* Notifications Dropdown */}
           <div className="relative">
             <button
               onClick={() => setShowNotifMenu(!showNotifMenu)}
-              className="p-2 bg-zinc-900 dark:bg-zinc-900 light-mode:bg-slate-100 hover:bg-zinc-800 border border-zinc-800 dark:border-zinc-800 light-mode:border-slate-300 text-zinc-300 light-mode:text-slate-700 rounded-xl transition-all relative"
+              className="p-2 bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 text-white rounded-xl transition-all relative"
             >
-              <Bell className="w-4 h-4" />
+              <Bell className="w-4 h-4 text-zinc-200" />
               {unreadCount > 0 && (
                 <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-emerald-500 text-zinc-950 text-[9px] font-black flex items-center justify-center">
                   {unreadCount}
@@ -205,25 +200,25 @@ export const TopBar: React.FC<TopBarProps> = ({
             </button>
 
             {showNotifMenu && (
-              <div className="absolute left-0 mt-2 w-80 bg-zinc-900 dark:bg-zinc-900 light-mode:bg-white border border-zinc-800 dark:border-zinc-800 light-mode:border-slate-200 rounded-2xl shadow-2xl p-4 z-50 space-y-3 animate-fade-in">
+              <div className="absolute left-0 mt-2 w-80 bg-black/98 border border-zinc-800 rounded-2xl shadow-2xl p-4 z-50 space-y-3 animate-fade-in">
                 <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
-                  <h4 className="text-xs font-black text-zinc-200 light-mode:text-slate-900">مركز الإشعارات والأنباء</h4>
-                  <button onClick={() => setShowNotifMenu(false)} className="text-zinc-400 hover:text-zinc-200">
+                  <h4 className="text-xs font-black text-white">مركز الإشعارات والأنباء</h4>
+                  <button onClick={() => setShowNotifMenu(false)} className="text-zinc-400 hover:text-white">
                     <X className="w-3.5 h-3.5" />
                   </button>
                 </div>
 
                 <div className="space-y-2 max-h-60 overflow-y-auto">
                   {notifications.length === 0 ? (
-                    <p className="text-[11px] text-zinc-500 text-center py-4">لا توجد إشعارات جديدة حالياً.</p>
+                    <p className="text-[11px] text-zinc-400 text-center py-4">لا توجد إشعارات جديدة حالياً.</p>
                   ) : (
                     notifications.map((n) => (
-                      <div key={n.id} className="p-2.5 bg-zinc-950/80 light-mode:bg-slate-50 border border-zinc-800/80 rounded-xl space-y-1">
+                      <div key={n.id} className="p-2.5 bg-zinc-950 border border-zinc-800/80 rounded-xl space-y-1">
                         <div className="flex items-center justify-between">
                           <span className="text-xs font-bold text-emerald-400">{n.title}</span>
-                          <span className="text-[9px] text-zinc-500">{new Date(n.created_at).toLocaleDateString('ar-SD')}</span>
+                          <span className="text-[9px] text-zinc-400">{new Date(n.created_at).toLocaleDateString('ar-SD')}</span>
                         </div>
-                        <p className="text-[10px] text-zinc-400 light-mode:text-slate-600 leading-relaxed">{n.content}</p>
+                        <p className="text-[10px] text-zinc-200 leading-relaxed">{n.content}</p>
                       </div>
                     ))
                   )}
@@ -235,12 +230,12 @@ export const TopBar: React.FC<TopBarProps> = ({
           {/* Profile / Auth Button */}
           <button
             onClick={() => setActiveView('profile')}
-            className="flex items-center gap-2 p-1.5 md:px-3 md:py-1.5 bg-zinc-900 dark:bg-zinc-900 light-mode:bg-slate-100 hover:bg-zinc-800 border border-zinc-800 dark:border-zinc-800 light-mode:border-slate-300 rounded-xl transition-all"
+            className="flex items-center gap-2 p-1.5 md:px-3 md:py-1.5 bg-zinc-950 hover:bg-zinc-900 border border-zinc-800 hover:border-emerald-500/50 rounded-xl transition-all"
           >
             <div className="w-6 h-6 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center font-bold text-xs">
               <User className="w-3.5 h-3.5" />
             </div>
-            <span className="text-xs font-bold text-zinc-200 light-mode:text-slate-800 hidden sm:inline">
+            <span className="text-xs font-bold text-white hidden sm:inline">
               {currentUser ? currentUser.name.split(' ')[0] : 'تسجيل دخول'}
             </span>
           </button>

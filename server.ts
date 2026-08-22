@@ -1880,35 +1880,59 @@ Keep the output as a clean, continuous paragraph of descriptive keywords and ima
   });
 
   app.post("/api/tutor/chat", async (req, res) => {
-    const { topic, lesson_title, message, language = "sd-ar", level = "مبتدئ" } = req.body;
+    const { topic, lesson_title, message, language = "sd-ar", level = "مبتدئ", image } = req.body;
     try {
       const apiKey = process.env.GEMINI_API_KEY;
       if (!apiKey || apiKey === "MY_GEMINI_API_KEY" || !apiKey.trim()) {
         const reply = language === "sd-ar"
-          ? `يا حبيب في درس (${lesson_title}) لـ ${topic}: سؤالك (${message}) ممتاز جداً! أصل الفكرة إننا بنمشي خطوة بخطوة عشان المعلومة تثبت صح.`
-          : `In lesson (${lesson_title}) for ${topic}: Your question (${message}) is great! Let's break it down step by step to ensure full understanding.`;
+          ? `يا حبيب في درس (${lesson_title || topic}) لـ ${topic}: سؤالك (${message}) ممتاز جداً! أصل الفكرة إننا بنمشي خطوة بخطوة عشان المعلومة تثبت صح.\n\n1️⃣ **المفهوم الأساسي**: فكرة الشرح تقوم على التبسيط والوضوح.\n2️⃣ **الخطوات**: أولاً نفهم المطلوب، ثانياً نطبق القاعدة.\n3️⃣ **سؤال للتأكد**: هل النقطة دي وضحت ليك هسة؟`
+          : `In lesson (${lesson_title || topic}) for ${topic}: Your question (${message}) is great! Let's break it down step by step to ensure full understanding.`;
         res.json({ status: "success", reply });
         return;
       }
 
       const ai = new GoogleGenAI({ apiKey });
       const systemInstruction = `
-أنت SAi Tutor، مدرس ذكاء اصطناعي صبور وواضح ومشجع.
-المادة: ${topic}
-الدرس الحالي: ${lesson_title}
-مستوى الطالب: ${level}
-لغة الإجابة المطلوبة: ${language === 'sd-ar' ? 'العامية السودانية الطبيعية والمفهومة مع أسلوب تعليمي راقٍ وتشجيعي' : language === 'en' ? 'Natural encouraging English' : 'العربية الفصحى السليمة'}
+أنت SAi Tutor، مدرس ذكاء اصطناعي شخصي صبور وواضح ومشجع للغاية.
+المادة: ${topic || 'عامة'}
+الدرس الحالي: ${lesson_title || topic || 'شرح عام'}
+مستوى وأسلوب الشرح المطلوب: ${level} 
+- إذا كان 'شرح مبسط': اشرح بأسلوب مبسط جداً مع ضرب أمثلة حية من الواقع والبيئة السودانية اليومية (مثل الحياة اليومية، المواقف السودانية المعروفة، البيئة، الزراعة والتجارة والمجتمع) لتسهيل استيعاب الفكرة.
+- إذا كان 'شرح أكاديمي': اشرح بأسلوب أكاديمي رصين ومفصل باللغة العربية الفصحى الدقيقة مع استخدام المصطلحات المنهجية والتأصيل العلمي.
+- إذا كان 'مبتدئ': كلمات بسيطة جداً وأمثلة يومية كثيرة.
+- إذا كان 'متوسط': عمق متوازن.
+- إذا كان 'متقدم': تفاصيل علمية وتخصصية عالية.
 
-قواعد الإجابة:
-1. كن صبوراً جداً واشرح المفهوم بوضوح.
-2. لا تعطِ الحل النهائي مباشرة إذا كان الطالب يحل تمريناً، بل وجهه بسؤال ذكي.
-3. كافئ محاولة الطالب واشرح سبب الصح أو الخطأ دون أي تجريح.
+لغة الإجابة المطلوبة: ${language === 'sd-ar' ? 'العامية السودانية الطبيعية والمفهومة جداً مع أسلوب تعليمي تشجيعي سوداني أصيل' : language === 'en' ? 'Natural encouraging English' : 'العربية الفصحى السليمة والمعبرة'}
+
+منهجية التدريس المتبعة (التزم بها بوضوح):
+1. فهم السؤال أو المسألة المرفقة.
+2. شرح الفكرة والمفهوم الأساسي بأسلوب يناسب مستوى الطالب.
+3. تقسيم المشكلة أو المسألة إلى خطوات منطقية متسلسلة (خطوة بخطوة).
+4. تقديم أمثلة توضيحية.
+5. طرح سؤال قصير لتفقد فهم الطالب في النهاية.
+6. تقديم ملخص سريع وموجز.
+7. عند المسائل الرياضية أو العلمية: اشرح طريقة وجذور الحل خطوة بخطوة وليس النتيجة فقط!
 `;
+
+      const parts: any[] = [];
+      if (image && typeof image === 'string') {
+        const match = image.match(/^data:(image\/\w+);base64,(.+)$/);
+        if (match) {
+          parts.push({
+            inlineData: {
+              mimeType: match[1],
+              data: match[2]
+            }
+          });
+        }
+      }
+      parts.push({ text: `${systemInstruction}\n\nسؤال/طلب الطالب: ${message}` });
 
       const response = await ai.models.generateContent({
         model: "gemini-2.5-flash",
         contents: [
-          { role: "user", parts: [{ text: `${systemInstruction}\n\nرسالة الطالب: ${message}` }] }
+          { role: "user", parts }
         ]
       });
 

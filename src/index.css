@@ -2,43 +2,60 @@
 
 @layer base {
   :root {
-    --bg-primary: #09090b;
-    --bg-secondary: #121215;
-    --text-primary: #f4f4f5;
-    --text-secondary: #a1a1aa;
-    --border-color: #27272a;
+    --bg-primary: #000000;
+    --bg-secondary: #08080a;
+    --bg-card: #0d0d10;
+    --text-primary: #ffffff;
+    --text-secondary: #f4f4f5;
+    --text-muted: #e4e4e7;
+    --border-color: #222226;
   }
 
   .light-mode {
-    --bg-primary: #f8fafc;
-    --bg-secondary: #ffffff;
-    --text-primary: #0f172a;
-    --text-secondary: #475569;
-    --border-color: #e2e8f0;
+    --bg-primary: #000000;
+    --bg-secondary: #08080a;
+    --bg-card: #0d0d10;
+    --text-primary: #ffffff;
+    --text-secondary: #f4f4f5;
+    --text-muted: #e4e4e7;
+    --border-color: #222226;
   }
+}
+
+html {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  color-scheme: dark;
 }
 
 body {
   font-family: 'Cairo', 'Inter', system-ui, -apple-system, sans-serif;
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
+  background-color: #000000 !important;
+  color: #ffffff !important;
   transition: background-color 0.3s ease, color 0.3s ease;
   overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
-/* Glassmorphism */
+/* Ensure bright white typography for headings and readable contrast */
+h1, h2, h3, h4, h5, h6 {
+  color: #ffffff !important;
+}
+
+/* High contrast glassmorphism with pitch-black glass */
 .glass-panel {
-  background: rgba(18, 18, 21, 0.75);
+  background: rgba(8, 8, 10, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .light-mode .glass-panel {
-  background: rgba(255, 255, 255, 0.85);
+  background: rgba(8, 8, 10, 0.88);
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
-  border: 1px solid rgba(0, 0, 0, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 /* Custom Scrollbar */
@@ -48,16 +65,16 @@ body {
 }
 
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #000000;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(16, 185, 129, 0.25);
+  background: rgba(16, 185, 129, 0.4);
   border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(16, 185, 129, 0.5);
+  background: rgba(16, 185, 129, 0.7);
 }
 
 /* Keyframe animations */
@@ -78,3 +95,4 @@ body {
 .animate-pulse-glow {
   animation: pulseGlow 3s infinite ease-in-out;
 }
+
